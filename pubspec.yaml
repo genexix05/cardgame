@@ -1,0 +1,41 @@
+name: cardgame
+description: "Coleccionador de cartas de Dragon Ball"
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.6.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Firebase
+  firebase_core: ^3.13.0
+  firebase_auth: ^5.5.2
+  cloud_firestore: ^5.6.6
+  firebase_storage: ^12.4.5
+  firebase_auth_web: ^5.8.13
+  firebase_storage_web: ^3.6.22
+  # Gestión de estado
+  provider: ^6.1.1
+  # Interfaces y animaciones
+  lottie: ^3.3.1
+  cached_network_image: ^3.3.1
+  # Navegación
+  go_router: ^14.8.1
+  # Utilidades
+  shared_preferences: ^2.2.2
+  uuid: ^4.3.2
+  google_sign_in: ^6.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/animations/
+    - assets/icons/
