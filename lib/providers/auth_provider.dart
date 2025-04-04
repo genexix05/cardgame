@@ -16,11 +16,30 @@ class AuthProvider with ChangeNotifier {
   String? get errorMessage => _error; // Alias para mantener compatibilidad
 
   AuthProvider() {
-    // Escuchar cambios en el estado de autenticación
-    _authService.authStateChanges().listen((User? user) {
-      _user = user;
-      notifyListeners();
-    });
+    try {
+      // Retrasamos la inicialización para asegurar que Firebase esté completamente inicializado
+      Future.delayed(Duration(seconds: 1), () {
+        _initAuthListener();
+      });
+    } catch (e) {
+      print("Error en constructor de AuthProvider: $e");
+    }
+  }
+
+  Future<void> _initAuthListener() async {
+    try {
+      // Escuchar cambios en el estado de autenticación de manera más segura
+      _authService.authStateChanges().listen((User? user) {
+        _user = user;
+        notifyListeners();
+      }, onError: (error) {
+        print("Error en authStateChanges: $error");
+        // No cierro la app, solo registro el error
+      });
+    } catch (e) {
+      print("Error al inicializar AuthProvider: $e");
+      // No cierro la app, solo registro el error
+    }
   }
 
   // Registro con email y contraseña

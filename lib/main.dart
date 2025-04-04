@@ -7,11 +7,20 @@ import 'services/pack_opening_service.dart';
 import 'providers/auth_provider.dart';
 import 'providers/collection_provider.dart';
 import 'providers/pack_provider.dart';
-import 'screens/splash_screen.dart';
+import 'screens/auth/login_screen.dart';
 
 void main() async {
+  // Asegurar inicialización de Flutter
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+
+  try {
+    // Inicializar Firebase con la forma estándar (sin opciones personalizadas)
+    await Firebase.initializeApp();
+    print("Firebase inicializado correctamente");
+  } catch (e) {
+    print("Error al inicializar Firebase: $e");
+  }
+
   runApp(const DragonBallCardApp());
 }
 
@@ -72,7 +81,8 @@ class DragonBallCardApp extends StatelessWidget {
           fontFamily: 'Roboto',
         ),
         themeMode: ThemeMode.system,
-        home: const SplashScreen(),
+        // Ir directo a la pantalla de login en vez de la SplashScreen
+        home: const LoginScreen(),
       ),
     );
   }

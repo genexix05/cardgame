@@ -7,6 +7,25 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:1074439862642:android:c4a38da3e322b356f3c5eb",
+        "android_client_info": {
+          "package_name": "com.dragonballcardgame.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD6T_Vf-7ShXcbLOMulrVuRGfZE41M9Y-w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:1074439862642:android:cb701f0bff02acb7f3c5eb",
         "android_client_info": {
           "package_name": "com.example.cardgame"

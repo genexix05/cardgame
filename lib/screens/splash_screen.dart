@@ -19,22 +19,43 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkAuthState() async {
-    // Simular un pequeño delay para mostrar la pantalla de splash
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      // Simular un pequeño delay para mostrar la pantalla de splash
+      await Future.delayed(const Duration(seconds: 2));
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-    // Navegar a la pantalla correspondiente basado en el estado de autenticación
-    if (authProvider.isAuthenticated) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
-    } else {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-      );
+      // Navegar a la pantalla correspondiente basado en el estado de autenticación
+      // Usamos un try-catch para manejar errores y evitar cierres inesperados
+      try {
+        if (authProvider.isAuthenticated) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const HomeScreen()),
+          );
+        } else {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+          );
+        }
+      } catch (e) {
+        print("Error al navegar: $e");
+        // Si hay algún error, por defecto navegamos a la pantalla de login
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+          );
+        }
+      }
+    } catch (e) {
+      print("Error en _checkAuthState: $e");
+      // Asegurarnos de que la app no se cierre por un error aquí
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+        );
+      }
     }
   }
 

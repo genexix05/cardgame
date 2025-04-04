@@ -54,11 +54,11 @@ class PackProvider with ChangeNotifier {
   }
 
   // Abrir un sobre
-  Future<List<card_model.Card>> openPack(String userId) async {
+  Future<bool> openPack(String userId) async {
     if (_selectedPack == null) {
       _error = 'No hay un sobre seleccionado';
       notifyListeners();
-      return [];
+      return false;
     }
 
     _isOpening = true;
@@ -78,12 +78,12 @@ class PackProvider with ChangeNotifier {
       _isOpening = false;
       notifyListeners();
 
-      return packCards;
+      return true;
     } catch (e) {
       _isOpening = false;
       _error = 'Error al abrir el sobre: $e';
       notifyListeners();
-      return [];
+      return false;
     }
   }
 

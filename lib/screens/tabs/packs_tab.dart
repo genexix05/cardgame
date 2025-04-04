@@ -71,7 +71,9 @@ class _PacksTabState extends State<PacksTab>
                     packProvider.availablePacks.isEmpty
                         ? _buildEmptyState()
                         : _buildPackList(
-                            packProvider.availablePacks,
+                            packProvider.availablePacks
+                                .where((pack) => !pack.isLimited)
+                                .toList(),
                             packProvider,
                             authProvider,
                           ),

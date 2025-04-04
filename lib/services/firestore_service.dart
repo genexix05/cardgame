@@ -52,7 +52,8 @@ class FirestoreService {
 
       return snapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
-        return CardPack.fromMap(data);
+        // Asegurar que pasamos el ID del documento
+        return CardPack.fromMap({...data, 'id': doc.id});
       }).toList();
     } catch (e) {
       print('Error al obtener sobres disponibles: $e');
