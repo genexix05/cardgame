@@ -45,3 +45,4 @@ app.*.map.json
 /android/app/release
 "android/java_pid12564.hprof" 
 "android/java_pid12564.hprof" 
+android/java_pid12564.hprof 
