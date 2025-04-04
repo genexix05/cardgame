@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/card.dart' as model;
+import '../models/user_collection.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 
 class CardGrid extends StatelessWidget {
   final List<Map<String, dynamic>> cards;
@@ -26,7 +29,7 @@ class CardGrid extends StatelessWidget {
       itemBuilder: (context, index) {
         final cardMap = cards[index];
         final card = cardMap['cardDetail'] as model.Card;
-        final userCard = cardMap['userCard'];
+        final userCard = cardMap['userCard'] as UserCard;
 
         return GestureDetector(
           onTap: () => onCardTap(cardMap),
@@ -47,24 +50,7 @@ class CardGrid extends StatelessWidget {
                   child: ClipRRect(
                     borderRadius:
                         const BorderRadius.vertical(top: Radius.circular(8)),
-                    child: CachedNetworkImage(
-                      imageUrl: card.imageUrl,
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      placeholder: (context, url) => Container(
-                        color: Colors.grey.shade300,
-                        child: const Center(
-                          child: CircularProgressIndicator(),
-                        ),
-                      ),
-                      errorWidget: (context, url, error) => Container(
-                        color: Colors.grey.shade300,
-                        child: const Icon(
-                          Icons.error,
-                          color: Colors.red,
-                        ),
-                      ),
-                    ),
+                    child: _buildCardImage(card.imageUrl),
                   ),
                 ),
 
@@ -130,6 +116,69 @@ class CardGrid extends StatelessWidget {
         );
       },
     );
+  }
+
+  // Método para construir la imagen de la carta (maneja URL y base64)
+  Widget _buildCardImage(String imageUrl) {
+    // Verificar si la imagen está en formato base64
+    final imageBytes = _getImageBytes(imageUrl);
+
+    if (imageBytes != null) {
+      // Si es base64, mostrar usando Image.memory
+      return Image.memory(
+        imageBytes,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        errorBuilder: (context, error, stackTrace) {
+          print('Error al cargar imagen base64: $error');
+          return Container(
+            color: Colors.grey.shade300,
+            child: const Icon(
+              Icons.broken_image,
+              color: Colors.grey,
+            ),
+          );
+        },
+      );
+    } else {
+      // Si es URL, mostrar usando CachedNetworkImage
+      return CachedNetworkImage(
+        imageUrl: imageUrl,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        placeholder: (context, url) => Container(
+          color: Colors.grey.shade300,
+          child: const Center(
+            child: CircularProgressIndicator(),
+          ),
+        ),
+        errorWidget: (context, url, error) {
+          print('Error al cargar imagen URL: $error');
+          return Container(
+            color: Colors.grey.shade300,
+            child: const Icon(
+              Icons.broken_image,
+              color: Colors.red,
+            ),
+          );
+        },
+      );
+    }
+  }
+
+  // Método para extraer los bytes de la imagen de un string base64
+  Uint8List? _getImageBytes(String url) {
+    if (url.startsWith('data:')) {
+      final parts = url.split(',');
+      if (parts.length > 1) {
+        try {
+          return base64Decode(parts[1]);
+        } catch (e) {
+          print('Error al decodificar imagen base64: $e');
+        }
+      }
+    }
+    return null;
   }
 
   Color _getRarityColor(model.CardRarity rarity) {

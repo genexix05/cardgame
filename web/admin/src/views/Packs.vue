@@ -100,7 +100,7 @@
               </div>
             </div>
             <div class="card-footer bg-transparent d-flex justify-content-between">
-              <router-link :to="'/packs/' + pack.id" class="btn btn-sm btn-outline-primary">
+              <router-link :to="'/packs/edit/' + pack.id" class="btn btn-sm btn-outline-primary">
                 <i class="fas fa-edit me-1"></i>Editar
               </router-link>
               <button class="btn btn-sm btn-outline-danger" @click="confirmDelete(pack)">
@@ -156,7 +156,7 @@ export default {
     const priceFilter = ref('');
     const sortOrder = ref('name');
     
-    // Para eliminar sobres
+    // Variables para manejo de eliminación
     const showDeleteModal = ref(false);
     const selectedPack = ref(null);
     const isDeleting = ref(false);
@@ -239,14 +239,21 @@ export default {
     
     const deletePack = async () => {
       if (!selectedPack.value) return;
-      
       isDeleting.value = true;
       try {
-        await store.dispatch('deletePack', selectedPack.value.id);
+        const result = await store.dispatch('deletePack', selectedPack.value.id);
+        if (result) {
+          // Volvemos a cargar los sobres para actualizar la lista
+          await loadPacks();
+          alert('Sobre eliminado correctamente');
+        } else {
+          alert('Error al eliminar el sobre');
+        }
         showDeleteModal.value = false;
         selectedPack.value = null;
       } catch (error) {
         console.error('Error al eliminar sobre:', error);
+        alert('Error al eliminar el sobre, por favor intenta nuevamente');
       } finally {
         isDeleting.value = false;
       }

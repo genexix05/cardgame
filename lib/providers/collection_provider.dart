@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../models/card.dart' as card_model;
 import '../models/user_collection.dart';
 import '../services/firestore_service.dart';
@@ -26,7 +27,27 @@ class CollectionProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      if (kDebugMode) {
+        print('CollectionProvider: Cargando colección para el usuario $userId');
+      }
+
       _userCollection = await _firestoreService.getUserCollection(userId);
+
+      if (_userCollection == null) {
+        if (kDebugMode) {
+          print(
+              'CollectionProvider: No se pudo cargar la colección del usuario');
+        }
+        _error = 'No se pudo cargar la colección del usuario';
+        _isLoading = false;
+        notifyListeners();
+        return;
+      }
+
+      if (kDebugMode) {
+        print(
+            'CollectionProvider: Colección cargada con ${_userCollection!.cards.length} cartas');
+      }
 
       // Cargar los detalles de las cartas para mostrar en la UI
       await _loadCardDetails();
@@ -34,6 +55,9 @@ class CollectionProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     } catch (e) {
+      if (kDebugMode) {
+        print('CollectionProvider: Error al cargar la colección: $e');
+      }
       _isLoading = false;
       _error = 'Error al cargar la colección: $e';
       notifyListeners();
@@ -46,9 +70,19 @@ class CollectionProvider with ChangeNotifier {
 
     final tempCards = <Map<String, dynamic>>[];
 
+    if (kDebugMode) {
+      print(
+          'CollectionProvider: Cargando detalles para ${_userCollection!.cards.length} cartas');
+    }
+
     for (final entry in _userCollection!.cards.entries) {
       final cardId = entry.key;
       final userCard = entry.value;
+
+      if (kDebugMode) {
+        print(
+            'CollectionProvider: Cargando detalles para carta $cardId (cantidad: ${userCard.quantity})');
+      }
 
       // Obtener detalles de la carta desde Firestore
       final cardDetails = await _firestoreService.getCardById(cardId);
@@ -58,11 +92,30 @@ class CollectionProvider with ChangeNotifier {
           'userCard': userCard,
           'cardDetail': cardDetails,
         });
+      } else {
+        if (kDebugMode) {
+          print(
+              'CollectionProvider: No se encontraron detalles para la carta $cardId');
+        }
       }
     }
 
     // Actualizar la lista una vez que tengamos todos los datos
     _userCardsWithDetails = tempCards;
+
+    if (kDebugMode) {
+      print(
+          'CollectionProvider: Se cargaron detalles para ${tempCards.length} cartas');
+
+      // Mostrar cartas vendibles (con cantidad > 1 y que no estén a la venta)
+      final sellableCards = tempCards.where((item) {
+        final userCard = item['userCard'] as UserCard;
+        return userCard.quantity > 1 && !userCard.isForSale;
+      }).toList();
+
+      print(
+          'CollectionProvider: Cartas disponibles para vender: ${sellableCards.length}');
+    }
   }
 
   // Agregar cartas a la colección del usuario

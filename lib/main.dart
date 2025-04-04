@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'services/auth_service.dart';
@@ -8,6 +9,8 @@ import 'providers/auth_provider.dart';
 import 'providers/collection_provider.dart';
 import 'providers/pack_provider.dart';
 import 'screens/auth/login_screen.dart';
+import 'screens/user_sales_screen.dart';
+import 'utils/audio_service.dart';
 
 void main() async {
   // Asegurar inicialización de Flutter
@@ -81,8 +84,11 @@ class DragonBallCardApp extends StatelessWidget {
           fontFamily: 'Roboto',
         ),
         themeMode: ThemeMode.system,
-        // Ir directo a la pantalla de login en vez de la SplashScreen
+        // Ir directo a la pantalla de login
         home: const LoginScreen(),
+        routes: {
+          UserSalesScreen.routeName: (context) => const UserSalesScreen(),
+        },
       ),
     );
   }

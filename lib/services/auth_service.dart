@@ -36,6 +36,24 @@ class AuthService {
           'displayName': result.user!.displayName ?? '',
           'photoURL': result.user!.photoURL ?? '',
         }, SetOptions(merge: true));
+
+        // Inicializar la colección del usuario con valores predeterminados
+        await firestore.collection('users').doc(result.user!.uid).set({
+          'coins': 1000, // Monedas iniciales
+          'gems': 50, // Gemas iniciales
+          'cards': {}, // Inicializar mapa de cartas vacío
+          'resources': {'coins': 1000, 'gems': 50}, // Inicializar recursos
+          'totalCards': 0, // Inicializar contador de cartas
+          'rarityDistribution': {
+            'common': 0,
+            'uncommon': 0,
+            'rare': 0,
+            'superRare': 0,
+            'ultraRare': 0,
+            'legendary': 0,
+          }, // Inicializar distribución de rareza
+          'lastUpdated': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
       }
 
       return result.user;
@@ -104,6 +122,24 @@ class AuthService {
             'displayName': result.user!.displayName ?? '',
             'photoURL': result.user!.photoURL ?? '',
           }, SetOptions(merge: true));
+
+          // Inicializar la colección del usuario con valores predeterminados
+          await firestore.collection('users').doc(result.user!.uid).set({
+            'coins': 1000, // Monedas iniciales
+            'gems': 50, // Gemas iniciales
+            'cards': {}, // Inicializar mapa de cartas vacío
+            'resources': {'coins': 1000, 'gems': 50}, // Inicializar recursos
+            'totalCards': 0, // Inicializar contador de cartas
+            'rarityDistribution': {
+              'common': 0,
+              'uncommon': 0,
+              'rare': 0,
+              'superRare': 0,
+              'ultraRare': 0,
+              'legendary': 0,
+            }, // Inicializar distribución de rareza
+            'lastUpdated': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
         } else {
           // Si ya existe, actualizar solo el último acceso
           await firestore.collection('users').doc(result.user!.uid).update({
@@ -147,6 +183,24 @@ class AuthService {
             'displayName': result.user!.displayName ?? '',
             'photoURL': result.user!.photoURL ?? '',
           }, SetOptions(merge: true));
+
+          // Inicializar la colección del usuario con valores predeterminados
+          await firestore.collection('users').doc(result.user!.uid).set({
+            'coins': 1000, // Monedas iniciales
+            'gems': 50, // Gemas iniciales
+            'cards': {}, // Inicializar mapa de cartas vacío
+            'resources': {'coins': 1000, 'gems': 50}, // Inicializar recursos
+            'totalCards': 0, // Inicializar contador de cartas
+            'rarityDistribution': {
+              'common': 0,
+              'uncommon': 0,
+              'rare': 0,
+              'superRare': 0,
+              'ultraRare': 0,
+              'legendary': 0,
+            }, // Inicializar distribución de rareza
+            'lastUpdated': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
         } else {
           // Si ya existe, actualizar solo el último acceso
           await firestore.collection('users').doc(result.user!.uid).update({
@@ -183,6 +237,26 @@ class AuthService {
             'lastLogin': DateTime.now(),
             'displayName': 'Usuario anónimo',
             'photoURL': '',
+          }, SetOptions(merge: true));
+
+          // Inicializar la colección del usuario con valores predeterminados
+          await firestore.collection('users').doc(result.user!.uid).set({
+            'coins':
+                500, // Monedas iniciales para visitantes (menos que usuarios registrados)
+            'gems':
+                20, // Gemas iniciales para visitantes (menos que usuarios registrados)
+            'cards': {}, // Inicializar mapa de cartas vacío
+            'resources': {'coins': 500, 'gems': 20}, // Inicializar recursos
+            'totalCards': 0, // Inicializar contador de cartas
+            'rarityDistribution': {
+              'common': 0,
+              'uncommon': 0,
+              'rare': 0,
+              'superRare': 0,
+              'ultraRare': 0,
+              'legendary': 0,
+            }, // Inicializar distribución de rareza
+            'lastUpdated': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
         } else {
           // Si ya existe, actualizar solo el último acceso

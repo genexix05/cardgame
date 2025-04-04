@@ -1,23 +1,112 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/collection_provider.dart';
 import '../../widgets/card_grid.dart';
 import '../../models/card.dart' as model;
+import '../../models/user_collection.dart';
 import '../../services/firestore_service.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 
 class CollectionTab extends StatefulWidget {
   const CollectionTab({super.key});
 
   @override
-  State<CollectionTab> createState() => _CollectionTabState();
+  _CollectionTabState createState() => _CollectionTabState();
 }
 
 class _CollectionTabState extends State<CollectionTab>
     with AutomaticKeepAliveClientMixin {
-  String _selectedFilter = 'Todas';
-  final String _searchQuery = '';
-  final _searchController = TextEditingController();
+  final FirestoreService _firestoreService = FirestoreService();
+  bool _isLoading = false;
+  List<Map<String, dynamic>> _userCards = [];
+  List<model.Card> _cards = [];
+  List<model.Card> _filteredCards = [];
+  List<model.Card> _favouriteCards = [];
+  Map<String, dynamic> _userCardMap = {};
+  String? _errorMessage;
+
+  // Filtros
+  String _searchQuery = '';
+  List<String> _seriesFilter = [];
+  List<model.CardRarity> _rarityFilter = [];
+  List<model.CardType> _typeFilter = [];
+  bool _onlyFavourites = false;
+
+  // Para la lista desplegable de series
+  List<String> _availableSeries = [];
+
+  // Método para construir la imagen de la carta (maneja URL y base64)
+  Widget _buildCardImage(String imageUrl) {
+    // Verificar si la imagen está en formato base64
+    final imageBytes = _getImageBytes(imageUrl);
+
+    if (imageBytes != null) {
+      // Si es base64, mostrar usando Image.memory
+      return Image.memory(
+        imageBytes,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          print('Error al cargar imagen base64: $error');
+          return Container(
+            color: Colors.grey.shade300,
+            child: const Icon(
+              Icons.broken_image,
+              color: Colors.grey,
+            ),
+          );
+        },
+      );
+    } else {
+      // Si es URL, mostrar usando Image.network
+      return Image.network(
+        imageUrl,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            color: Colors.grey.shade300,
+            child: Center(
+              child: CircularProgressIndicator(
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded /
+                        loadingProgress.expectedTotalBytes!
+                    : null,
+                strokeWidth: 2,
+              ),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          print('Error al cargar imagen URL: $error');
+          return Container(
+            color: Colors.grey.shade300,
+            child: const Icon(
+              Icons.broken_image,
+              color: Colors.grey,
+            ),
+          );
+        },
+      );
+    }
+  }
+
+  // Método para extraer los bytes de la imagen de un string base64
+  Uint8List? _getImageBytes(String url) {
+    if (url.startsWith('data:')) {
+      final parts = url.split(',');
+      if (parts.length > 1) {
+        try {
+          return base64Decode(parts[1]);
+        } catch (e) {
+          print('Error al decodificar imagen base64: $e');
+        }
+      }
+    }
+    return null;
+  }
 
   @override
   bool get wantKeepAlive => true;
@@ -45,7 +134,6 @@ class _CollectionTabState extends State<CollectionTab>
 
   @override
   void dispose() {
-    _searchController.dispose();
     super.dispose();
   }
 
@@ -64,7 +152,8 @@ class _CollectionTabState extends State<CollectionTab>
             onPressed: () {
               showSearch(
                 context: context,
-                delegate: CardSearchDelegate(collectionProvider),
+                delegate: CardSearchDelegate(
+                    collectionProvider.userCardsWithDetails, _userCardMap),
               );
             },
           ),
@@ -197,10 +286,10 @@ class _CollectionTabState extends State<CollectionTab>
       padding: const EdgeInsets.only(right: 8.0),
       child: FilterChip(
         label: Text(label),
-        selected: _selectedFilter == label,
+        selected: _searchQuery == label,
         onSelected: (selected) {
           setState(() {
-            _selectedFilter = selected ? label : 'Todas';
+            _searchQuery = selected ? label : '';
           });
         },
         selectedColor: const Color(0xFFFF5722).withOpacity(0.3),
@@ -214,34 +303,6 @@ class _CollectionTabState extends State<CollectionTab>
         List.from(provider.userCardsWithDetails);
 
     // Aplicar filtro seleccionado
-    switch (_selectedFilter) {
-      case 'Favoritas':
-        filteredCards = provider.getFavoriteCards();
-        break;
-      case 'Comunes':
-        filteredCards = provider.getCardsByRarity(model.CardRarity.common);
-        break;
-      case 'Poco comunes':
-        filteredCards = provider.getCardsByRarity(model.CardRarity.uncommon);
-        break;
-      case 'Raras':
-        filteredCards = provider.getCardsByRarity(model.CardRarity.rare);
-        break;
-      case 'Super raras':
-        filteredCards = provider.getCardsByRarity(model.CardRarity.superRare);
-        break;
-      case 'Ultra raras':
-        filteredCards = provider.getCardsByRarity(model.CardRarity.ultraRare);
-        break;
-      case 'Legendarias':
-        filteredCards = provider.getCardsByRarity(model.CardRarity.legendary);
-        break;
-      default:
-        // Todas las cartas (ya está asignado)
-        break;
-    }
-
-    // Aplicar búsqueda si existe
     if (_searchQuery.isNotEmpty) {
       filteredCards = filteredCards.where((card) {
         final cardDetail = card['cardDetail'] as model.Card;
@@ -263,7 +324,7 @@ class _CollectionTabState extends State<CollectionTab>
   // Mostrar detalles de una carta
   void _showCardDetail(Map<String, dynamic> cardMap) {
     final card = cardMap['cardDetail'] as model.Card;
-    final userCard = cardMap['userCard'];
+    final userCard = cardMap['userCard'] as UserCard;
 
     showModalBottomSheet(
       context: context,
@@ -300,12 +361,7 @@ class _CollectionTabState extends State<CollectionTab>
                   Container(
                     height: 250,
                     width: double.infinity,
-                    decoration: BoxDecoration(
-                      image: DecorationImage(
-                        image: NetworkImage(card.imageUrl),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
+                    child: _buildCardImage(card.imageUrl),
                   ),
 
                   // Detalles de la carta
@@ -552,8 +608,8 @@ class _CollectionTabState extends State<CollectionTab>
     if (authProvider.user == null) return;
 
     try {
-      final firestoreService = FirestoreService();
-      await firestoreService.toggleCardFavorite(authProvider.user!.uid, cardId);
+      await _firestoreService.toggleCardFavorite(
+          authProvider.user!.uid, cardId);
 
       // Recargar la colección para reflejar los cambios
       await collectionProvider.loadUserCollection(authProvider.user!.uid);
@@ -680,10 +736,8 @@ class _CollectionTabState extends State<CollectionTab>
       },
     ).then((confirmed) async {
       if (confirmed == true) {
-        final firestoreService = FirestoreService();
-
         try {
-          final success = await firestoreService.putCardForSale(
+          final success = await _firestoreService.putCardForSale(
             authProvider.user!.uid,
             cardId,
             price,
@@ -761,10 +815,81 @@ class _CollectionTabState extends State<CollectionTab>
 }
 
 // Delegado para la búsqueda de cartas
-class CardSearchDelegate extends SearchDelegate<String> {
-  final CollectionProvider provider;
+class CardSearchDelegate extends SearchDelegate<model.Card?> {
+  final List<Map<String, dynamic>> cards;
+  final Map<String, dynamic> userCardMap;
 
-  CardSearchDelegate(this.provider);
+  CardSearchDelegate(this.cards, this.userCardMap);
+
+  // Método para construir la imagen de la carta (maneja URL y base64)
+  Widget _buildCardImage(String imageUrl) {
+    // Verificar si la imagen está en formato base64
+    final imageBytes = _getImageBytes(imageUrl);
+
+    if (imageBytes != null) {
+      // Si es base64, mostrar usando Image.memory
+      return Image.memory(
+        imageBytes,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          print('Error al cargar imagen base64: $error');
+          return Container(
+            color: Colors.grey.shade300,
+            child: const Icon(
+              Icons.broken_image,
+              color: Colors.grey,
+            ),
+          );
+        },
+      );
+    } else {
+      // Si es URL, mostrar usando Image.network
+      return Image.network(
+        imageUrl,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            color: Colors.grey.shade300,
+            child: Center(
+              child: CircularProgressIndicator(
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded /
+                        loadingProgress.expectedTotalBytes!
+                    : null,
+                strokeWidth: 2,
+              ),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          print('Error al cargar imagen URL: $error');
+          return Container(
+            color: Colors.grey.shade300,
+            child: const Icon(
+              Icons.broken_image,
+              color: Colors.grey,
+            ),
+          );
+        },
+      );
+    }
+  }
+
+  // Método para extraer los bytes de la imagen de un string base64
+  Uint8List? _getImageBytes(String url) {
+    if (url.startsWith('data:')) {
+      final parts = url.split(',');
+      if (parts.length > 1) {
+        try {
+          return base64Decode(parts[1]);
+        } catch (e) {
+          print('Error al decodificar imagen base64: $e');
+        }
+      }
+    }
+    return null;
+  }
 
   @override
   List<Widget> buildActions(BuildContext context) {
@@ -783,7 +908,7 @@ class CardSearchDelegate extends SearchDelegate<String> {
     return IconButton(
       icon: const Icon(Icons.arrow_back),
       onPressed: () {
-        close(context, '');
+        close(context, null);
       },
     );
   }
@@ -805,11 +930,11 @@ class CardSearchDelegate extends SearchDelegate<String> {
       );
     }
 
-    final filteredCards = provider.userCardsWithDetails.where((card) {
+    final filteredCards = cards.where((card) {
       final cardDetail = card['cardDetail'] as model.Card;
-      return cardDetail.name.toLowerCase().contains(query.toLowerCase()) ||
-          cardDetail.description.toLowerCase().contains(query.toLowerCase()) ||
-          cardDetail.series.toLowerCase().contains(query.toLowerCase());
+      return cardDetail.name.toLowerCase().contains(query!.toLowerCase()) ||
+          cardDetail.description.toLowerCase().contains(query!.toLowerCase()) ||
+          cardDetail.series.toLowerCase().contains(query!.toLowerCase());
     }).toList();
 
     if (filteredCards.isEmpty) {
@@ -822,8 +947,8 @@ class CardSearchDelegate extends SearchDelegate<String> {
       cards: filteredCards,
       onCardTap: (cardDetails) {
         // Cerrar el diálogo de búsqueda con el contexto proporcionado
-        close(context, '');
-        
+        close(context, cardDetails['cardDetail'] as model.Card?);
+
         // Usar el contexto proporcionado para abrir el modal de detalles
         // después de un breve retardo para asegurar que la búsqueda se haya cerrado
         Future.delayed(const Duration(milliseconds: 100), () {
@@ -837,8 +962,8 @@ class CardSearchDelegate extends SearchDelegate<String> {
               builder: (modalContext) {
                 // Extraer los datos de la carta
                 final card = cardDetails['cardDetail'] as model.Card;
-                final userCard = cardDetails['userCard'];
-                
+                final userCard = cardDetails['userCard'] as UserCard;
+
                 return DraggableScrollableSheet(
                   initialChildSize: 0.7,
                   maxChildSize: 0.9,
@@ -850,7 +975,7 @@ class CardSearchDelegate extends SearchDelegate<String> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Barra de control 
+                          // Barra de control
                           Center(
                             child: Container(
                               margin: const EdgeInsets.only(top: 8, bottom: 16),
@@ -862,19 +987,14 @@ class CardSearchDelegate extends SearchDelegate<String> {
                               ),
                             ),
                           ),
-                          
+
                           // Imagen de la carta
                           Container(
                             height: 250,
                             width: double.infinity,
-                            decoration: BoxDecoration(
-                              image: DecorationImage(
-                                image: NetworkImage(card.imageUrl),
-                                fit: BoxFit.cover,
-                              ),
-                            ),
+                            child: _buildCardImage(card.imageUrl),
                           ),
-                          
+
                           // Información básica de la carta
                           Padding(
                             padding: const EdgeInsets.all(16.0),
@@ -898,14 +1018,16 @@ class CardSearchDelegate extends SearchDelegate<String> {
                                   children: [
                                     Icon(
                                       Icons.star,
-                                      color: _getRarityColor(card.rarity, context),
+                                      color:
+                                          _getRarityColor(card.rarity, context),
                                       size: 18,
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
                                       _getRarityText(card.rarity, context),
                                       style: TextStyle(
-                                        color: _getRarityColor(card.rarity, context),
+                                        color: _getRarityColor(
+                                            card.rarity, context),
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -933,7 +1055,7 @@ class CardSearchDelegate extends SearchDelegate<String> {
       },
     );
   }
-  
+
   // Funciones auxiliares para usar dentro del SearchDelegate
   Color _getRarityColor(model.CardRarity rarity, BuildContext context) {
     switch (rarity) {

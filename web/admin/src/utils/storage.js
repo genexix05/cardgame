@@ -39,7 +39,7 @@ export function fileToBase64(file) {
 /**
  * Comprime una imagen para reducir su tamaño antes de convertirla a base64
  * 
- * @param {File} file - Archivo de imagen a comprimir
+ * @param {File|string} file - Archivo de imagen a comprimir o URL/Base64 de imagen
  * @param {number} maxWidth - Ancho máximo de la imagen resultante
  * @param {number} quality - Calidad de compresión (0-1)
  * @returns {Promise<string>} Promesa que resuelve a la cadena base64 de la imagen comprimida
@@ -48,6 +48,25 @@ export function compressAndConvertToBase64(file, maxWidth = 800, quality = 0.7) 
   return new Promise((resolve, reject) => {
     if (!file) {
       reject(new Error("No se proporcionó ningún archivo"));
+      return;
+    }
+    
+    // Si ya es una cadena (base64 o URL), devolverla directamente
+    if (typeof file === 'string') {
+      if (file.startsWith('data:image')) {
+        // Si ya es base64, solo devolvemos
+        resolve(file);
+        return;
+      } else if (file.startsWith('http')) {
+        // Si es una URL, la usamos como está
+        resolve(file);
+        return;
+      }
+    }
+    
+    // Si no es un archivo Blob/File, rechazamos
+    if (!(file instanceof Blob)) {
+      reject(new Error("El archivo debe ser un objeto de tipo Blob o File"));
       return;
     }
     

@@ -281,7 +281,24 @@ export default createStore({
         const packDoc = await getDoc(packRef)
         
         if (packDoc.exists()) {
-          return { id: packDoc.id, ...packDoc.data() }
+          const packData = packDoc.data();
+          
+          // Cargar las cartas fijas desde la subcolección
+          const packCardsRef = collection(db, 'packs', packId, 'packCards');
+          const packCardsQuery = query(packCardsRef, orderBy('order', 'asc'));
+          const packCardsSnapshot = await getDocs(packCardsQuery);
+          
+          // Extraer los IDs de las cartas
+          const fixedCards = packCardsSnapshot.docs.map(doc => doc.data().cardId);
+          console.log(`fetchPackById - Sobre con ID ${packId} tiene ${fixedCards.length} cartas en la subcolección:`, fixedCards);
+          
+          // Añadir las cartas fijas al objeto del sobre
+          packData.fixedCards = fixedCards;
+          
+          return { 
+            id: packDoc.id, 
+            ...packData 
+          };
         } else {
           throw new Error('Sobre no encontrado')
         }
@@ -299,21 +316,50 @@ export default createStore({
       commit('SET_LOADING', true);
       commit('SET_ERROR', null);
       try {
-        // Si hay una imagen para subir
+        console.log('createPack - Recibiendo datos:', {
+          ...packData, 
+          imageFile: packData.imageFile ? 'Objeto File' : null,
+          fixedCards: packData.fixedCards || []
+        });
+        
+        // Crear una copia del packData sin clonar objetos File/Blob
+        const packToSave = {};
+        Object.keys(packData).forEach(key => {
+          if (key !== 'imageFile' && key !== 'fixedCards') { // No incluir fixedCards en el documento principal
+            packToSave[key] = packData[key];
+          }
+        });
+        
+        // Extraer el array de fixedCards para guardar en la subcolección
+        const fixedCardsArray = Array.isArray(packData.fixedCards) ? [...packData.fixedCards] : [];
+        console.log('Array de cartas fijas para guardar en subcolección:', fixedCardsArray);
+        
+        // Manejar la referencia al archivo de imagen directamente (sin clonar)
         if (packData.imageFile) {
+          packToSave.imageFile = packData.imageFile;
+        }
+        
+        // Si hay una imagen para subir
+        if (packToSave.imageFile) {
           try {
+            // Depuración: Verificar tipo de la imagen
+            console.log('Tipo de imageFile:', typeof packToSave.imageFile);
+            console.log('Es instancia de Blob?', packToSave.imageFile instanceof Blob);
+            console.log('Es instancia de File?', packToSave.imageFile instanceof File);
+            console.log('Valor de imageFile:', packToSave.imageFile);
+            
             // Convertir imagen a base64 con compresión
             const base64Image = await compressAndConvertToBase64(
-              packData.imageFile, 
+              packToSave.imageFile, 
               800,  // Ancho máximo en píxeles
               0.7   // Calidad (0-1)
             );
             
             // Guardar la imagen como string base64 en lugar de URL
-            packData.imageUrl = base64Image;
+            packToSave.imageUrl = base64Image;
             
             // Eliminar el archivo de la data que se enviará a Firestore
-            delete packData.imageFile;
+            delete packToSave.imageFile;
             
             console.log('✅ Imagen convertida a base64 correctamente');
           } catch (error) {
@@ -322,14 +368,43 @@ export default createStore({
           }
         }
         
+        console.log('Creando sobre con datos finales:', {
+          ...packToSave,
+          imageUrl: packToSave.imageUrl ? '[base64 image]' : null,
+        });
+        
+        // 1. Guardar el documento principal del sobre
         const db = getFirestore();
         const packsRef = collection(db, 'packs');
-        const docRef = await addDoc(packsRef, packData);
+        const docRef = await addDoc(packsRef, packToSave);
+        const packId = docRef.id;
         
+        // 2. Ahora guardar cada carta fija en la subcolección
+        const packCardsRef = collection(db, 'packs', packId, 'packCards');
+        const savedCardPromises = fixedCardsArray.map(async (cardId, index) => {
+          await addDoc(packCardsRef, {
+            cardId: cardId,
+            order: index, // Para mantener el orden de las cartas
+            addedAt: new Date()
+          });
+          return cardId;
+        });
+        
+        // Esperar a que se guarden todas las cartas
+        const savedCardIds = await Promise.all(savedCardPromises);
+        console.log('Cartas guardadas en la subcolección:', savedCardIds);
+        
+        // Para mantener compatibilidad con el resto del código, incluimos las cartas en el objeto retornado
         const newPack = {
-          id: docRef.id,
-          ...packData
+          id: packId,
+          ...packToSave,
+          fixedCards: savedCardIds // Mantenemos el array para compatibilidad con el código actual
         };
+        
+        console.log('Sobre creado exitosamente:', {
+          id: newPack.id,
+          fixedCards: newPack.fixedCards
+        });
         
         commit('ADD_PACK', newPack);
         return newPack;
@@ -347,21 +422,51 @@ export default createStore({
       commit('SET_LOADING', true);
       commit('SET_ERROR', null);
       try {
-        // Si hay una imagen para subir
+        console.log('updatePack - Recibiendo datos:', {
+          id: packId,
+          ...packData, 
+          imageFile: packData.imageFile ? 'Objeto File' : null,
+          fixedCards: packData.fixedCards || []
+        });
+        
+        // Crear una copia del packData sin clonar objetos File/Blob
+        const packToSave = {};
+        Object.keys(packData).forEach(key => {
+          if (key !== 'imageFile' && key !== 'fixedCards') { // No incluir fixedCards en el documento principal
+            packToSave[key] = packData[key];
+          }
+        });
+        
+        // Extraer el array de fixedCards para guardar en la subcolección
+        const fixedCardsArray = Array.isArray(packData.fixedCards) ? [...packData.fixedCards] : [];
+        console.log('Array de cartas fijas para actualizar en subcolección:', fixedCardsArray);
+        
+        // Manejar la referencia al archivo de imagen directamente (sin clonar)
         if (packData.imageFile) {
+          packToSave.imageFile = packData.imageFile;
+        }
+        
+        // Si hay una imagen para subir
+        if (packToSave.imageFile) {
           try {
+            // Depuración: Verificar tipo de la imagen
+            console.log('Tipo de imageFile (update):', typeof packToSave.imageFile);
+            console.log('Es instancia de Blob? (update)', packToSave.imageFile instanceof Blob);
+            console.log('Es instancia de File? (update)', packToSave.imageFile instanceof File);
+            console.log('Valor de imageFile (update):', packToSave.imageFile);
+            
             // Convertir imagen a base64 con compresión
             const base64Image = await compressAndConvertToBase64(
-              packData.imageFile, 
+              packToSave.imageFile, 
               800,  // Ancho máximo en píxeles
               0.7   // Calidad (0-1)
             );
             
             // Guardar la imagen como string base64 en lugar de URL
-            packData.imageUrl = base64Image;
+            packToSave.imageUrl = base64Image;
             
             // Eliminar el archivo de la data que se enviará a Firestore
-            delete packData.imageFile;
+            delete packToSave.imageFile;
             
             console.log('✅ Imagen convertida a base64 correctamente');
           } catch (error) {
@@ -370,14 +475,52 @@ export default createStore({
           }
         }
         
-        const db = getFirestore();
-        const packRef = doc(db, 'packs', packId);
-        await updateDoc(packRef, packData);
+        console.log('Actualizando sobre con datos finales:', {
+          id: packId,
+          ...packToSave,
+          imageUrl: packToSave.imageUrl ? '[base64 image]' : null
+        });
         
+        const db = getFirestore();
+        
+        // 1. Actualizar el documento principal del sobre
+        const packRef = doc(db, 'packs', packId);
+        await updateDoc(packRef, packToSave);
+        
+        // 2. Actualizar la colección de cartas fijas
+        // Primero eliminar todas las cartas existentes
+        const packCardsRef = collection(db, 'packs', packId, 'packCards');
+        const existingCards = await getDocs(packCardsRef);
+        
+        // Eliminar cada documento existente
+        const deletePromises = existingCards.docs.map(doc => deleteDoc(doc.ref));
+        await Promise.all(deletePromises);
+        
+        // Ahora guardar las nuevas cartas
+        const savedCardPromises = fixedCardsArray.map(async (cardId, index) => {
+          await addDoc(packCardsRef, {
+            cardId: cardId,
+            order: index,
+            addedAt: new Date()
+          });
+          return cardId;
+        });
+        
+        // Esperar a que se guarden todas las cartas
+        const savedCardIds = await Promise.all(savedCardPromises);
+        console.log('Cartas actualizadas en la subcolección:', savedCardIds);
+        
+        // Para mantener compatibilidad con el resto del código
         const updatedPack = {
           id: packId,
-          ...packData
+          ...packToSave,
+          fixedCards: savedCardIds // Mantenemos el array para compatibilidad
         };
+        
+        console.log('Sobre actualizado exitosamente:', {
+          id: updatedPack.id,
+          fixedCards: updatedPack.fixedCards
+        });
         
         commit('UPDATE_PACK', updatedPack);
         return updatedPack;

@@ -231,6 +231,17 @@
                       Puedes especificar cartas que se incluirán siempre en este sobre. Esto es útil para sobres temáticos o promocionales.
                     </div>
                     
+                    <div class="alert alert-info mb-3">
+                      <i class="fas fa-info-circle me-2"></i>
+                      <strong>¿Cómo funciona?</strong>
+                      <ul class="mb-0 mt-1">
+                        <li>Selecciona una carta del menú desplegable y haz clic en el botón "Añadir Carta".</li>
+                        <li>Puedes añadir tantas cartas fijas como desees.</li>
+                        <li>Las cartas añadidas aparecerán siempre en este sobre cuando un usuario lo abra.</li>
+                        <li>Para guardar los cambios, no olvides hacer clic en "Guardar Sobre" al final del formulario.</li>
+                      </ul>
+                    </div>
+                    
                     <div v-if="loadingCards" class="text-center py-2">
                       <div class="spinner-border spinner-border-sm text-primary" role="status">
                         <span class="visually-hidden">Cargando cartas...</span>
@@ -252,25 +263,34 @@
                         class="btn btn-sm btn-outline-primary mb-3" 
                         @click="addFixedCard" 
                         :disabled="!selectedCardId"
+                        id="addCardButton"
                       >
                         <i class="fas fa-plus-circle me-1"></i>Añadir Carta
                       </button>
                       
                       <div v-if="fixedCards.length === 0" class="text-center py-3 bg-light rounded">
                         <p class="text-muted mb-0">No hay cartas fijas seleccionadas</p>
+                        <small class="text-info mt-2 d-block">Al añadir cartas fijas, estas aparecerán siempre en este sobre cuando un usuario lo abra.</small>
                       </div>
                       <div v-else class="table-responsive">
-                        <table class="table table-sm">
-                          <thead>
+                        <p class="text-info mb-2">
+                          <i class="fas fa-info-circle me-1"></i> 
+                          Este sobre contendrá {{ fixedCards.length }} carta(s) garantizada(s)
+                          <span class="badge bg-success ms-2">{{ fixedCards.length }} carta(s) seleccionada(s)</span>
+                        </p>
+                        <table class="table table-sm table-striped">
+                          <thead class="table-light">
                             <tr>
+                              <th>#</th>
                               <th>Nombre</th>
                               <th>Rareza</th>
                               <th>Tipo</th>
-                              <th></th>
+                              <th>Acciones</th>
                             </tr>
                           </thead>
                           <tbody>
                             <tr v-for="(cardId, index) in fixedCards" :key="index">
+                              <td>{{ index + 1 }}</td>
                               <td>{{ getCardName(cardId) }}</td>
                               <td>{{ getCardRarity(cardId) }}</td>
                               <td>{{ getCardType(cardId) }}</td>
@@ -279,6 +299,7 @@
                                   type="button" 
                                   class="btn btn-sm btn-outline-danger" 
                                   @click="removeFixedCard(index)"
+                                  :title="`Eliminar ${getCardName(cardId)}`"
                                 >
                                   <i class="fas fa-times"></i>
                                 </button>
@@ -286,6 +307,12 @@
                             </tr>
                           </tbody>
                         </table>
+                        <small class="text-muted">Nota: Si añades más cartas fijas que el número total de cartas del sobre, todas las cartas fijas serán incluidas.</small>
+                        
+                        <div class="alert alert-warning mt-3">
+                          <i class="fas fa-exclamation-triangle me-2"></i>
+                          <strong>¡No olvides guardar!</strong> Haz clic en el botón "Guardar Sobre" al final del formulario para que las cartas fijas se guarden correctamente.
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -422,6 +449,8 @@ export default {
         try {
           const pack = await store.dispatch('fetchPackById', packId.value);
           if (pack) {
+            console.log('Sobre cargado desde Firestore:', pack);
+            
             // Cargar datos generales
             Object.keys(packData).forEach(key => {
               if (key !== 'probabilities' && key !== 'fixedCards' && pack[key] !== undefined) {
@@ -443,14 +472,35 @@ export default {
               });
             }
             
-            // Cartas fijas
+            // Cartas fijas - Asegurarse de que es un array válido
+            console.log('Cargando fixedCards desde el sobre:', pack.fixedCards);
+            
+            // Verificar si fixedCards es un array válido en Firestore
             if (pack.fixedCards && Array.isArray(pack.fixedCards)) {
-              fixedCards.value = [...pack.fixedCards];
+              // Crear un nuevo array con los datos de Firestore
+              const loadedFixedCards = [...pack.fixedCards];
+              
+              // Asignar el nuevo array al ref
+              fixedCards.value = loadedFixedCards;
+              
+              console.log('Cartas fijas cargadas correctamente:', fixedCards.value);
+            } else {
+              // Inicializar como array vacío si no hay datos válidos
+              fixedCards.value = [];
+              console.log('No se encontraron cartas fijas válidas en el sobre. Inicializado como []');
             }
+          } else {
+            console.error('No se pudo cargar el sobre con ID:', packId.value);
+            fixedCards.value = []; // Asegurar que sea un array vacío en caso de error
           }
         } catch (error) {
           console.error('Error al cargar sobre:', error);
+          fixedCards.value = []; // Asegurar que sea un array vacío en caso de error
         }
+      } else {
+        // Si no estamos en modo edición, inicializar como array vacío
+        fixedCards.value = [];
+        console.log('Modo creación: fixedCards inicializado como array vacío');
       }
     };
     
@@ -570,15 +620,134 @@ export default {
     
     // Añadir una carta fija
     const addFixedCard = () => {
-      if (selectedCardId.value && !fixedCards.value.includes(selectedCardId.value)) {
-        fixedCards.value.push(selectedCardId.value);
+      // Limpiar errores anteriores
+      submitError.value = '';
+      
+      if (!selectedCardId.value) {
+        console.log('No hay carta seleccionada para añadir');
+        submitError.value = 'Por favor, selecciona una carta para añadir';
+        return;
+      }
+      
+      // Asegurarse de que fixedCards.value sea un array
+      if (!Array.isArray(fixedCards.value)) {
+        console.warn('fixedCards no era un array, inicializando como array vacío');
+        fixedCards.value = [];
+      }
+      
+      // Verificar si la carta ya está en el array
+      if (fixedCards.value.includes(selectedCardId.value)) {
+        console.log('La carta ya está en fixedCards:', selectedCardId.value);
+        submitError.value = 'Esta carta ya ha sido añadida al sobre';
         selectedCardId.value = '';
+        return;
+      }
+      
+      // Crear un nuevo array con la carta añadida (para asegurar reactividad)
+      const newFixedCards = [...fixedCards.value, selectedCardId.value];
+      
+      // Asignar el nuevo array al ref de fixedCards
+      fixedCards.value = newFixedCards;
+      
+      // Obtener el nombre de la carta para mostrar en un mensaje
+      const card = cards.value.find(c => c.id === selectedCardId.value);
+      const cardName = card ? card.name : 'Carta desconocida';
+      const cardRarity = card ? getRarityText(card.rarity) : '';
+      
+      console.log('Carta añadida a fixedCards:', selectedCardId.value);
+      console.log('Nombre de la carta:', cardName);
+      console.log('Rareza de la carta:', cardRarity);
+      console.log('fixedCards actual:', fixedCards.value);
+      
+      // Mostrar un mensaje de éxito visible
+      const messageContainer = document.createElement('div');
+      messageContainer.className = 'alert alert-success mt-2 d-flex align-items-center';
+      messageContainer.innerHTML = `
+        <i class="fas fa-check-circle me-2 fs-5"></i>
+        <div>
+          <strong>¡Carta añadida!</strong><br>
+          <span>${cardName}</span>
+          <span class="badge ${getBadgeClass(card ? card.rarity : '')} ms-1">${cardRarity}</span>
+          <div class="mt-1">Total: ${fixedCards.value.length} carta(s) fija(s) en este sobre</div>
+        </div>
+      `;
+      
+      // Añadir botón para cerrar la alerta
+      const closeButton = document.createElement('button');
+      closeButton.type = 'button';
+      closeButton.className = 'btn-close ms-auto';
+      closeButton.addEventListener('click', () => {
+        if (messageContainer.parentNode) {
+          messageContainer.parentNode.removeChild(messageContainer);
+        }
+      });
+      messageContainer.appendChild(closeButton);
+      
+      // Añadir al DOM cerca del botón de añadir carta
+      const addCardButton = document.querySelector('#addCardButton');
+      if (addCardButton && addCardButton.parentNode) {
+        // Eliminar alertas anteriores si existen
+        const existingAlerts = addCardButton.parentNode.querySelectorAll('.alert-success');
+        existingAlerts.forEach(alert => {
+          if (alert.parentNode) {
+            alert.parentNode.removeChild(alert);
+          }
+        });
+        
+        addCardButton.parentNode.appendChild(messageContainer);
+        
+        // Eliminar después de 5 segundos
+        setTimeout(() => {
+          if (messageContainer.parentNode) {
+            messageContainer.parentNode.removeChild(messageContainer);
+          }
+        }, 5000);
+      }
+      
+      // Resetear la selección
+      selectedCardId.value = '';
+    };
+    
+    // Obtener clase de badge según rareza
+    const getBadgeClass = (rarity) => {
+      switch (rarity) {
+        case 'common': return 'bg-secondary';
+        case 'uncommon': return 'bg-success';
+        case 'rare': return 'bg-primary';
+        case 'superRare': return 'bg-info';
+        case 'ultraRare': return 'bg-warning text-dark';
+        case 'legendary': return 'bg-danger';
+        default: return 'bg-secondary';
       }
     };
     
     // Eliminar una carta fija
     const removeFixedCard = (index) => {
-      fixedCards.value.splice(index, 1);
+      if (!Array.isArray(fixedCards.value)) {
+        console.error('fixedCards no es un array');
+        fixedCards.value = [];
+        return;
+      }
+      
+      if (index < 0 || index >= fixedCards.value.length) {
+        console.error('Índice fuera de rango:', index, 'longitud:', fixedCards.value.length);
+        return;
+      }
+      
+      // Guardar la carta que vamos a eliminar para el log
+      const removedCard = fixedCards.value[index];
+      
+      // Crear un nuevo array sin la carta eliminada
+      const newFixedCards = [
+        ...fixedCards.value.slice(0, index),
+        ...fixedCards.value.slice(index + 1)
+      ];
+      
+      // Asignar el nuevo array al ref de fixedCards
+      fixedCards.value = newFixedCards;
+      
+      console.log('Carta eliminada de fixedCards:', removedCard);
+      console.log('fixedCards actual:', fixedCards.value);
     };
     
     // Obtener información de las cartas
@@ -612,11 +781,30 @@ export default {
         return;
       }
       
+      // Validación explícita de fixedCards para mejor diagnóstico
+      console.log('Verificando estado de fixedCards antes de guardar:');
+      console.log('- Es un array?', Array.isArray(fixedCards.value));
+      console.log('- Longitud:', fixedCards.value ? fixedCards.value.length : 'No disponible');
+      console.log('- Contenido:', fixedCards.value);
+      
+      // Asegurarse de que fixedCards sea un array
+      if (!Array.isArray(fixedCards.value)) {
+        console.warn('fixedCards no era un array al guardar, inicializando como array vacío');
+        fixedCards.value = []; // Inicializar como array vacío si no lo es
+      }
+      
       isSubmitting.value = true;
       
       try {
-        // Preparar los datos para guardar
-        const packToSave = { ...packData };
+        // Preparar los datos para guardar (sin clonar con JSON.stringify ya que pierde propiedades del objeto File)
+        const packToSave = {};
+        
+        // Copiar propiedades básicas del packData
+        Object.keys(packData).forEach(key => {
+          if (key !== 'imageFile') {
+            packToSave[key] = packData[key];
+          }
+        });
         
         // Convertir probabilidades de porcentaje a decimal (0-1)
         packToSave.probabilities = {};
@@ -624,18 +812,45 @@ export default {
           packToSave.probabilities[rarity.value] = probabilities[rarity.value] / 100;
         });
         
-        // Cartas fijas
-        packToSave.fixedCards = [...fixedCards.value];
+        // Manejar cartas fijas - Ahora se guardarán en una subcolección 'packCards'
+        // Preparar el array de IDs de cartas para enviar al store
+        const fixedCardsArray = Array.isArray(fixedCards.value) ? [...fixedCards.value] : [];
+        console.log('Array de cartas fijas para guardar:', fixedCardsArray);
+        
+        // Agregar información de cuántas cartas se están enviando
+        if (fixedCardsArray.length > 0) {
+          console.log(`Se enviarán ${fixedCardsArray.length} cartas fijas al store`);
+          // Mostrar los nombres de las cartas que se enviarán
+          fixedCardsArray.forEach((cardId, index) => {
+            const cardName = getCardName(cardId);
+            console.log(`- Carta ${index + 1}: ${cardName} (ID: ${cardId})`);
+          });
+        } else {
+          console.log('No hay cartas fijas para enviar al store');
+        }
+        
+        // Asignar el array de cartas fijas
+        packToSave.fixedCards = fixedCardsArray;
         
         // Fecha de lanzamiento
         if (releaseDateStr.value) {
           packToSave.releaseDate = new Date(releaseDateStr.value);
         }
         
-        // Añadir la imagen si hay una nueva
+        // Añadir la imagen si hay una nueva - NO usar JSON.stringify con el objeto File
         if (imageFile.value) {
           packToSave.imageFile = imageFile.value;
+          console.log('Asignando imagen:', imageFile.value);
+          console.log('Es blob:', imageFile.value instanceof Blob);
+          console.log('Es file:', imageFile.value instanceof File);
+          console.log('Tipo de archivo:', imageFile.value.type);
         }
+        
+        console.log('Guardando sobre con datos completos:', {
+          ...packToSave,
+          imageUrl: packToSave.imageUrl ? '[base64 image]' : null,
+          fixedCards: packToSave.fixedCards
+        });
         
         let savedPack;
         
@@ -649,6 +864,9 @@ export default {
           // Crear nuevo sobre
           savedPack = await store.dispatch('createPack', packToSave);
         }
+        
+        console.log('Sobre guardado con éxito:', savedPack);
+        console.log('fixedCards en el sobre guardado:', savedPack?.fixedCards);
         
         if (savedPack) {
           // Redireccionar a la lista de sobres con mensaje de éxito
@@ -740,9 +958,22 @@ export default {
     
     // Inicializar
     onMounted(() => {
+      console.log('PackEditor montado - inicializando componente');
+      
+      // Asegurar que fixedCards sea un array desde el inicio
+      if (!Array.isArray(fixedCards.value)) {
+        console.log('fixedCards no es un array en onMounted, inicializando como []');
+        fixedCards.value = [];
+      } else {
+        console.log('fixedCards ya es un array en onMounted, longitud:', fixedCards.value.length);
+      }
+      
+      // Cargar datos
       loadPack();
       loadCards();
       validateProbabilities();
+      
+      console.log('Inicialización completada');
     });
     
     return {
@@ -777,7 +1008,8 @@ export default {
       getCardType,
       getRarityText,
       getTypeText,
-      prepareImageUrl
+      prepareImageUrl,
+      getBadgeClass
     };
   }
 };

@@ -5,12 +5,24 @@ import '../../providers/pack_provider.dart';
 import '../../providers/collection_provider.dart';
 import '../../models/card_pack.dart';
 import '../pack_opening_screen.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 
 class PacksTab extends StatefulWidget {
   const PacksTab({super.key});
 
   @override
   State<PacksTab> createState() => _PacksTabState();
+}
+
+Uint8List? _getImageBytes(String url) {
+  if (url.startsWith('data:')) {
+    final parts = url.split(',');
+    if (parts.length > 1) {
+      return base64Decode(parts[1]);
+    }
+  }
+  return null;
 }
 
 class _PacksTabState extends State<PacksTab>
@@ -190,6 +202,50 @@ class _PacksTabState extends State<PacksTab>
     PackProvider packProvider,
     AuthProvider authProvider,
   ) {
+    // Función para obtener los bytes de la imagen a partir de una Data URI.
+    Uint8List? getImageBytes(String url) {
+      if (url.startsWith('data:')) {
+        final parts = url.split(',');
+        if (parts.length > 1) {
+          return base64Decode(parts[1]);
+        }
+      }
+      return null;
+    }
+
+    // Función para construir el widget de la imagen.
+    Widget buildPackImage(String imageUrl) {
+      final imageBytes = getImageBytes(imageUrl);
+      if (imageBytes != null) {
+        return Image.memory(
+          imageBytes,
+          height: 150,
+          width: double.infinity,
+          fit: BoxFit.cover,
+        );
+      } else {
+        return Image.network(
+          imageUrl,
+          height: 150,
+          width: double.infinity,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return Container(
+              height: 150,
+              color: Colors.grey.shade300,
+              child: const Center(
+                child: Icon(
+                  Icons.card_giftcard,
+                  size: 50,
+                  color: Colors.grey,
+                ),
+              ),
+            );
+          },
+        );
+      }
+    }
+
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -210,27 +266,8 @@ class _PacksTabState extends State<PacksTab>
               ClipRRect(
                 borderRadius:
                     const BorderRadius.vertical(top: Radius.circular(12)),
-                child: Image.network(
-                  pack.imageUrl,
-                  height: 150,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      height: 150,
-                      color: Colors.grey.shade300,
-                      child: const Center(
-                        child: Icon(
-                          Icons.card_giftcard,
-                          size: 50,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    );
-                  },
-                ),
+                child: buildPackImage(pack.imageUrl),
               ),
-
               // Información del sobre
               Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -290,9 +327,9 @@ class _PacksTabState extends State<PacksTab>
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Text(
+                        const Text(
                           'Precio: ',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                         Text(
                           '${pack.price} ${pack.currency == CardPackCurrency.coins ? 'monedas' : 'gemas'}',
@@ -348,6 +385,9 @@ class _PacksTabState extends State<PacksTab>
   ) async {
     if (authProvider.user == null) return;
 
+    // Primero seleccionamos el sobre antes de intentar abrirlo
+    packProvider.selectPack(pack);
+
     final success = await packProvider.openPack(authProvider.user!.uid);
 
     if (success == true && mounted == true) {
@@ -366,6 +406,14 @@ class _PacksTabState extends State<PacksTab>
           ),
         );
       }
+    } else if (!success) {
+      // Mostrar mensaje de error al usuario
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(packProvider.error ?? 'Error al abrir el sobre'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 }

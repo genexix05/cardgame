@@ -1,8 +1,11 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/card.dart' as card_model; // Importar modelo Card con alias
 import '../models/card.dart'
     show CardRarity; // Importar CardRarity directamente
-// Importar widget Card de Material
+import '../utils/audio_service.dart'; // Importar nuestro servicio de audio
 
 class PackOpeningScreen extends StatefulWidget {
   final List<card_model.Card> cards; // Usar el alias para el modelo Card
@@ -21,6 +24,8 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
   late AnimationController _animationController;
   bool _showCards = false;
   int _currentCardIndex = 0;
+  final AudioService _audioService =
+      AudioService(); // Instancia del servicio de audio
 
   @override
   void initState() {
@@ -30,23 +35,86 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
       duration: const Duration(seconds: 2),
     );
 
+    // Evitar interacciones innecesarias con AudioManager
+    SystemChannels.textInput.invokeMethod('TextInput.hide');
+
+    // Intentar reactivar el audio para esta pantalla
+    _reactivateAudio();
+
+    // Inicializar audio de forma asíncrona y sin bloquear
+    _initAudio();
+
     // Empezar la animación
     _animationController.forward();
 
     // Mostrar las cartas después de la animación
     _animationController.addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
+      if (status == AnimationStatus.completed && mounted) {
         setState(() {
           _showCards = true;
+          // Reproducir sonido solo si el audio está habilitado
+          if (_audioService.isAudioEnabled && widget.cards.isNotEmpty) {
+            _audioService.playCardRevealSound();
+          }
         });
       }
     });
+  }
+
+  // Método para inicializar el audio
+  Future<void> _initAudio() async {
+    try {
+      await _audioService.initialize();
+
+      // Solo reproducir sonido si el audio está habilitado y la pantalla está montada
+      if (_audioService.isAudioEnabled && mounted) {
+        await _audioService.playPackOpenSound();
+      }
+    } catch (e) {
+      // Error silencioso
+    }
+  }
+
+  // Método para reactivar el audio
+  void _reactivateAudio() {
+    // Esta función es para reactivar el audio si está desactivado por completo
+    try {
+      AudioService.enableAudio(); // Nuevo método que añadiremos al AudioService
+    } catch (e) {
+      print('Error al reactivar audio: $e');
+    }
   }
 
   @override
   void dispose() {
     _animationController.dispose();
     super.dispose();
+  }
+
+  // Método para navegar a la siguiente carta con efecto de sonido
+  void _nextCard() {
+    if (_currentCardIndex < widget.cards.length - 1) {
+      setState(() {
+        _currentCardIndex++;
+        // Reproducir sonido solo si el audio está habilitado
+        if (_audioService.isAudioEnabled) {
+          _audioService.playCardRevealSound();
+        }
+      });
+    }
+  }
+
+  // Método para navegar a la carta anterior con efecto de sonido
+  void _previousCard() {
+    if (_currentCardIndex > 0) {
+      setState(() {
+        _currentCardIndex--;
+        // Reproducir sonido solo si el audio está habilitado
+        if (_audioService.isAudioEnabled) {
+          _audioService.playCardRevealSound();
+        }
+      });
+    }
   }
 
   @override
@@ -68,11 +136,15 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
         children: [
           Expanded(
             child: Center(
-              child: _showCards ? _buildCardReveal() : _buildOpeningAnimation(),
+              child: _showCards
+                  ? widget.cards.isEmpty
+                      ? _buildNoCardsAvailable()
+                      : _buildCardReveal()
+                  : _buildOpeningAnimation(),
             ),
           ),
           // Indicador de progreso y botones de navegación
-          if (_showCards)
+          if (_showCards && widget.cards.isNotEmpty)
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -100,13 +172,7 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
                       ElevatedButton(
-                        onPressed: _currentCardIndex > 0
-                            ? () {
-                                setState(() {
-                                  _currentCardIndex--;
-                                });
-                              }
-                            : null,
+                        onPressed: _currentCardIndex > 0 ? _previousCard : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFFF5722),
                           foregroundColor: Colors.white,
@@ -121,11 +187,7 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
                       ),
                       ElevatedButton(
                         onPressed: _currentCardIndex < widget.cards.length - 1
-                            ? () {
-                                setState(() {
-                                  _currentCardIndex++;
-                                });
-                              }
+                            ? _nextCard
                             : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFFF5722),
@@ -163,8 +225,67 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
                 ],
               ),
             ),
+
+          // Botón simple para volver si no hay cartas
+          if (_showCards && widget.cards.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFFFF5722),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: const Text(
+                    'Volver a Sobres',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
+    );
+  }
+
+  // Widget para mostrar cuando no hay cartas disponibles
+  Widget _buildNoCardsAvailable() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(
+          Icons.sentiment_dissatisfied,
+          size: 80,
+          color: Colors.white54,
+        ),
+        const SizedBox(height: 24),
+        const Text(
+          'No hay cartas disponibles',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32.0),
+          child: Text(
+            'Se ha descontado el precio del sobre. Las cartas estarán disponibles próximamente.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.white70,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -216,39 +337,13 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Imagen de la carta
+                  // Imagen de la carta - Modificada para manejar base64
                   Expanded(
                     child: ClipRRect(
                       borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(13),
                       ),
-                      child: Image.network(
-                        card.imageUrl,
-                        fit: BoxFit.cover,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Center(
-                            child: CircularProgressIndicator(
-                              value: loadingProgress.expectedTotalBytes != null
-                                  ? loadingProgress.cumulativeBytesLoaded /
-                                      loadingProgress.expectedTotalBytes!
-                                  : null,
-                            ),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            color: Colors.grey.shade200,
-                            child: const Center(
-                              child: Icon(
-                                Icons.broken_image,
-                                size: 64,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
+                      child: _buildCardImage(card.imageUrl),
                     ),
                   ),
 
@@ -346,6 +441,74 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // Nuevo método para construir la imagen de la carta (similar al que se usa en packs_tab.dart)
+  Widget _buildCardImage(String imageUrl) {
+    // Verificar si la imagen está en formato base64
+    final imageBytes = _getImageBytes(imageUrl);
+
+    if (imageBytes != null) {
+      // Si es base64, mostrar usando Image.memory
+      return Image.memory(
+        imageBytes,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          print('Error al cargar imagen base64: $error');
+          return _buildErrorImage();
+        },
+      );
+    } else {
+      // Si es URL, mostrar usando Image.network
+      return Image.network(
+        imageUrl,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Center(
+            child: CircularProgressIndicator(
+              value: loadingProgress.expectedTotalBytes != null
+                  ? loadingProgress.cumulativeBytesLoaded /
+                      loadingProgress.expectedTotalBytes!
+                  : null,
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          print('Error al cargar imagen URL: $error');
+          return _buildErrorImage();
+        },
+      );
+    }
+  }
+
+  // Método para extraer los bytes de la imagen de un string base64
+  Uint8List? _getImageBytes(String url) {
+    if (url.startsWith('data:')) {
+      final parts = url.split(',');
+      if (parts.length > 1) {
+        try {
+          return base64Decode(parts[1]);
+        } catch (e) {
+          print('Error al decodificar imagen base64: $e');
+        }
+      }
+    }
+    return null;
+  }
+
+  // Método para construir la imagen de error
+  Widget _buildErrorImage() {
+    return Container(
+      color: Colors.grey.shade200,
+      child: const Center(
+        child: Icon(
+          Icons.broken_image,
+          size: 64,
+          color: Colors.grey,
+        ),
       ),
     );
   }
