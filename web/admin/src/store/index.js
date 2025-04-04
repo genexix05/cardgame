@@ -12,7 +12,7 @@ import {
   orderBy,
   limit 
 } from 'firebase/firestore'
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { compressAndConvertToBase64 } from '../utils/storage'
 
 export default createStore({
   state: {
@@ -139,78 +139,92 @@ export default createStore({
       try {
         // Si hay una imagen para subir
         if (cardData.imageFile) {
-          const storage = getStorage()
-          const storageRef = ref(storage, `card_images/${Date.now()}_${cardData.imageFile.name}`)
-          
-          // Subir la imagen
-          await uploadBytes(storageRef, cardData.imageFile)
-          
-          // Obtener URL de descarga
-          const downloadURL = await getDownloadURL(storageRef)
-          cardData.imageUrl = downloadURL
-          
-          // Eliminar el archivo de la data que se enviará a Firestore
-          delete cardData.imageFile
+          try {
+            // Convertir imagen a base64 con compresión
+            const base64Image = await compressAndConvertToBase64(
+              cardData.imageFile, 
+              800,  // Ancho máximo en píxeles
+              0.7   // Calidad (0-1)
+            );
+            
+            // Guardar la imagen como string base64 en lugar de URL
+            cardData.imageUrl = base64Image;
+            
+            // Eliminar el archivo de la data que se enviará a Firestore
+            delete cardData.imageFile;
+            
+            console.log('✅ Imagen convertida a base64 correctamente');
+          } catch (error) {
+            console.error('❌ Error al procesar imagen:', error);
+            throw new Error(`Error al procesar la imagen: ${error.message || 'Error desconocido'}`);
+          }
         }
         
-        const db = getFirestore()
-        const cardsRef = collection(db, 'cards')
-        const docRef = await addDoc(cardsRef, cardData)
+        const db = getFirestore();
+        const cardsRef = collection(db, 'cards');
+        const docRef = await addDoc(cardsRef, cardData);
         
         const newCard = {
           id: docRef.id,
           ...cardData
-        }
+        };
         
-        commit('ADD_CARD', newCard)
-        return newCard
+        commit('ADD_CARD', newCard);
+        return newCard;
       } catch (error) {
-        console.error('Error al crear carta:', error)
-        commit('SET_ERROR', 'Error al crear la carta. Por favor, inténtalo de nuevo.')
-        return null
+        console.error('Error al crear carta:', error);
+        commit('SET_ERROR', 'Error al crear la carta. Por favor, inténtalo de nuevo.');
+        return null;
       } finally {
-        commit('SET_LOADING', false)
+        commit('SET_LOADING', false);
       }
     },
     
     // Actualizar carta existente
     async updateCard({ commit }, { cardId, cardData }) {
-      commit('SET_LOADING', true)
-      commit('SET_ERROR', null)
+      commit('SET_LOADING', true);
+      commit('SET_ERROR', null);
       try {
         // Si hay una imagen para subir
         if (cardData.imageFile) {
-          const storage = getStorage()
-          const storageRef = ref(storage, `card_images/${Date.now()}_${cardData.imageFile.name}`)
-          
-          // Subir la imagen
-          await uploadBytes(storageRef, cardData.imageFile)
-          
-          // Obtener URL de descarga
-          const downloadURL = await getDownloadURL(storageRef)
-          cardData.imageUrl = downloadURL
-          
-          // Eliminar el archivo de la data que se enviará a Firestore
-          delete cardData.imageFile
+          try {
+            // Convertir imagen a base64 con compresión
+            const base64Image = await compressAndConvertToBase64(
+              cardData.imageFile, 
+              800,  // Ancho máximo en píxeles
+              0.7   // Calidad (0-1)
+            );
+            
+            // Guardar la imagen como string base64 en lugar de URL
+            cardData.imageUrl = base64Image;
+            
+            // Eliminar el archivo de la data que se enviará a Firestore
+            delete cardData.imageFile;
+            
+            console.log('✅ Imagen convertida a base64 correctamente');
+          } catch (error) {
+            console.error('❌ Error al procesar imagen:', error);
+            throw new Error(`Error al procesar la imagen: ${error.message || 'Error desconocido'}`);
+          }
         }
         
-        const db = getFirestore()
-        const cardRef = doc(db, 'cards', cardId)
-        await updateDoc(cardRef, cardData)
+        const db = getFirestore();
+        const cardRef = doc(db, 'cards', cardId);
+        await updateDoc(cardRef, cardData);
         
         const updatedCard = {
           id: cardId,
           ...cardData
-        }
+        };
         
-        commit('UPDATE_CARD', updatedCard)
-        return updatedCard
+        commit('UPDATE_CARD', updatedCard);
+        return updatedCard;
       } catch (error) {
-        console.error('Error al actualizar carta:', error)
-        commit('SET_ERROR', 'Error al actualizar la carta. Por favor, inténtalo de nuevo.')
-        return null
+        console.error('Error al actualizar carta:', error);
+        commit('SET_ERROR', 'Error al actualizar la carta. Por favor, inténtalo de nuevo.');
+        return null;
       } finally {
-        commit('SET_LOADING', false)
+        commit('SET_LOADING', false);
       }
     },
     
@@ -282,143 +296,97 @@ export default createStore({
     
     // Crear nuevo sobre
     async createPack({ commit }, packData) {
-      commit('SET_LOADING', true)
-      commit('SET_ERROR', null)
+      commit('SET_LOADING', true);
+      commit('SET_ERROR', null);
       try {
         // Si hay una imagen para subir
         if (packData.imageFile) {
           try {
-            const storage = getStorage()
-            const filename = `${Date.now()}_${packData.imageFile.name.replace(/[^a-zA-Z0-9.]/g, '_')}`
-            const storageRef = ref(storage, `pack_images/${filename}`)
+            // Convertir imagen a base64 con compresión
+            const base64Image = await compressAndConvertToBase64(
+              packData.imageFile, 
+              800,  // Ancho máximo en píxeles
+              0.7   // Calidad (0-1)
+            );
             
-            console.log('📤 Iniciando subida de imagen a Firebase Storage...')
+            // Guardar la imagen como string base64 en lugar de URL
+            packData.imageUrl = base64Image;
             
-            // Configurar metadatos para CORS
-            const metadata = {
-              contentType: packData.imageFile.type,
-              customMetadata: {
-                'uploaded-by': 'admin-panel',
-                'upload-timestamp': Date.now().toString()
-              }
-            }
+            // Eliminar el archivo de la data que se enviará a Firestore
+            delete packData.imageFile;
             
-            // Subir la imagen con metadatos
-            await uploadBytes(storageRef, packData.imageFile, metadata)
-            
-            console.log('✅ Imagen subida correctamente, obteniendo URL...')
-            
-            // Obtener URL de descarga con manejo de errores
-            const downloadURL = await getDownloadURL(storageRef)
-            packData.imageUrl = downloadURL
-            
-            console.log('✅ URL de imagen obtenida correctamente')
-          } catch (uploadError) {
-            console.error('❌ Error al subir imagen:', uploadError)
-            
-            // Manejo específico de errores CORS
-            if (uploadError.code === 'storage/unauthorized' || 
-                uploadError.message?.includes('CORS') || 
-                uploadError.code === 'storage/canceled') {
-              throw new Error('Error de permisos CORS al subir la imagen. Por favor, verifica la configuración de Firebase Storage.')
-            }
-            
-            // Otros errores de Storage
-            throw new Error(`Error al subir imagen: ${uploadError.message || 'Error desconocido'}`)
+            console.log('✅ Imagen convertida a base64 correctamente');
+          } catch (error) {
+            console.error('❌ Error al procesar imagen:', error);
+            throw new Error(`Error al procesar la imagen: ${error.message || 'Error desconocido'}`);
           }
-          
-          // Eliminar el archivo de la data que se enviará a Firestore
-          delete packData.imageFile
         }
         
-        const db = getFirestore()
-        const packsRef = collection(db, 'packs')
-        const docRef = await addDoc(packsRef, packData)
+        const db = getFirestore();
+        const packsRef = collection(db, 'packs');
+        const docRef = await addDoc(packsRef, packData);
         
         const newPack = {
           id: docRef.id,
           ...packData
-        }
+        };
         
-        commit('ADD_PACK', newPack)
-        return newPack
+        commit('ADD_PACK', newPack);
+        return newPack;
       } catch (error) {
-        console.error('Error al crear sobre:', error)
-        commit('SET_ERROR', 'Error al crear el sobre. Por favor, inténtalo de nuevo.')
-        return null
+        console.error('Error al crear sobre:', error);
+        commit('SET_ERROR', 'Error al crear el sobre. Por favor, inténtalo de nuevo.');
+        return null;
       } finally {
-        commit('SET_LOADING', false)
+        commit('SET_LOADING', false);
       }
     },
     
     // Actualizar sobre existente
     async updatePack({ commit }, { packId, packData }) {
-      commit('SET_LOADING', true)
-      commit('SET_ERROR', null)
+      commit('SET_LOADING', true);
+      commit('SET_ERROR', null);
       try {
         // Si hay una imagen para subir
         if (packData.imageFile) {
           try {
-            const storage = getStorage()
-            const filename = `${Date.now()}_${packData.imageFile.name.replace(/[^a-zA-Z0-9.]/g, '_')}`
-            const storageRef = ref(storage, `pack_images/${filename}`)
+            // Convertir imagen a base64 con compresión
+            const base64Image = await compressAndConvertToBase64(
+              packData.imageFile, 
+              800,  // Ancho máximo en píxeles
+              0.7   // Calidad (0-1)
+            );
             
-            console.log('📤 Iniciando subida de imagen a Firebase Storage...')
+            // Guardar la imagen como string base64 en lugar de URL
+            packData.imageUrl = base64Image;
             
-            // Configurar metadatos para CORS
-            const metadata = {
-              contentType: packData.imageFile.type,
-              customMetadata: {
-                'uploaded-by': 'admin-panel',
-                'upload-timestamp': Date.now().toString()
-              }
-            }
+            // Eliminar el archivo de la data que se enviará a Firestore
+            delete packData.imageFile;
             
-            // Subir la imagen con metadatos
-            await uploadBytes(storageRef, packData.imageFile, metadata)
-            
-            console.log('✅ Imagen subida correctamente, obteniendo URL...')
-            
-            // Obtener URL de descarga con manejo de errores
-            const downloadURL = await getDownloadURL(storageRef)
-            packData.imageUrl = downloadURL
-            
-            console.log('✅ URL de imagen obtenida correctamente')
-          } catch (uploadError) {
-            console.error('❌ Error al subir imagen:', uploadError)
-            
-            // Manejo específico de errores CORS
-            if (uploadError.code === 'storage/unauthorized' || 
-                uploadError.message?.includes('CORS') || 
-                uploadError.code === 'storage/canceled') {
-              throw new Error('Error de permisos CORS al subir la imagen. Por favor, verifica la configuración de Firebase Storage.')
-            }
-            
-            // Otros errores de Storage
-            throw new Error(`Error al subir imagen: ${uploadError.message || 'Error desconocido'}`)
+            console.log('✅ Imagen convertida a base64 correctamente');
+          } catch (error) {
+            console.error('❌ Error al procesar imagen:', error);
+            throw new Error(`Error al procesar la imagen: ${error.message || 'Error desconocido'}`);
           }
-          
-          // Eliminar el archivo de la data que se enviará a Firestore
-          delete packData.imageFile
         }
         
-        const db = getFirestore()
-        const packRef = doc(db, 'packs', packId)
-        await updateDoc(packRef, packData)
+        const db = getFirestore();
+        const packRef = doc(db, 'packs', packId);
+        await updateDoc(packRef, packData);
         
         const updatedPack = {
           id: packId,
           ...packData
-        }
+        };
         
-        commit('UPDATE_PACK', updatedPack)
-        return updatedPack
+        commit('UPDATE_PACK', updatedPack);
+        return updatedPack;
       } catch (error) {
-        console.error('Error al actualizar sobre:', error)
-        commit('SET_ERROR', 'Error al actualizar el sobre. Por favor, inténtalo de nuevo.')
-        return null
+        console.error('Error al actualizar sobre:', error);
+        commit('SET_ERROR', 'Error al actualizar el sobre. Por favor, inténtalo de nuevo.');
+        return null;
       } finally {
-        commit('SET_LOADING', false)
+        commit('SET_LOADING', false);
       }
     },
     

@@ -1,0 +1,23 @@
+{
+  "firestore": {
+    "rules": "web/admin/firebase/firestore.rules",
+    "indexes": "web/admin/firebase/firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "web/admin/firebase/storage.rules"
+  },
+  "hosting": {
+    "public": "web/admin/dist",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

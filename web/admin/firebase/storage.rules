@@ -1,0 +1,22 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Permitir acceso a todos los archivos si el usuario está autenticado
+    match /{allPaths=**} {
+      allow read: if true; // Permitir lectura pública para todas las imágenes
+      allow write: if request.auth != null; // Solo permitir escritura a usuarios autenticados
+    }
+    
+    // Permisos específicos para las imágenes de cartas
+    match /card_images/{imageId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    // Permisos específicos para las imágenes de sobres
+    match /pack_images/{imageId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}
