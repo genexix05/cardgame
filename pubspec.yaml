@@ -29,6 +29,7 @@ dependencies:
   google_sign_in: ^6.3.0
   # Audio
   just_audio: ^0.9.36
+  audioplayers: ^5.2.1
 
 dev_dependencies:
   flutter_test:
@@ -42,3 +43,10 @@ flutter:
     - assets/animations/
     - assets/icons/
     - assets/sounds/
+    - assets/audio/
+    - assets/fonts/
+    
+  fonts:
+    - family: Saiyan
+      fonts:
+        - asset: assets/fonts/Saiyan-Sans.ttf

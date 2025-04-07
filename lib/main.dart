@@ -8,9 +8,10 @@ import 'services/pack_opening_service.dart';
 import 'providers/auth_provider.dart';
 import 'providers/collection_provider.dart';
 import 'providers/pack_provider.dart';
-import 'screens/auth/login_screen.dart';
+import 'screens/splash_screen.dart';
 import 'screens/user_sales_screen.dart';
 import 'utils/audio_service.dart';
+import 'providers/music_provider.dart';
 
 void main() async {
   // Asegurar inicialización de Flutter
@@ -63,6 +64,7 @@ class DragonBallCardApp extends StatelessWidget {
           update: (_, firestoreService, packOpeningService, previous) =>
               previous!..update(firestoreService, packOpeningService),
         ),
+        ChangeNotifierProvider(create: (_) => MusicProvider()),
       ],
       child: MaterialApp(
         title: 'Dragon Ball Card Collector',
@@ -84,8 +86,8 @@ class DragonBallCardApp extends StatelessWidget {
           fontFamily: 'Roboto',
         ),
         themeMode: ThemeMode.system,
-        // Ir directo a la pantalla de login
-        home: const LoginScreen(),
+        // Cambiar a SplashScreen como pantalla inicial
+        home: const SplashScreen(),
         routes: {
           UserSalesScreen.routeName: (context) => const UserSalesScreen(),
         },
