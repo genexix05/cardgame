@@ -1,151 +1,152 @@
 <template>
-  <div class="cards-view p-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+  <div class="cards-view">
+    <!-- Encabezado -->
+    <div class="flex items-center justify-between mb-8">
       <div>
-        <h1 class="fw-bold mb-1">Gestión de Cartas</h1>
-        <p class="text-muted">Administra todas las cartas del juego</p>
+        <h1 class="text-2xl font-bold text-gray-800">Gestión de Cartas</h1>
+        <p class="text-gray-600 mt-1">Administra todas las cartas del juego</p>
       </div>
-      <router-link to="/cards/new" class="btn btn-primary d-flex align-items-center">
-        <i class="fas fa-plus-circle me-2"></i>Nueva Carta
+      <router-link to="/cards/new" class="btn-primary">
+        <i class="fas fa-plus-circle mr-2"></i>Nueva Carta
       </router-link>
     </div>
     
-    <!-- Filtros y búsqueda mejorados -->
-    <div class="card mb-4">
-      <div class="card-header d-flex align-items-center">
-        <i class="fas fa-filter me-2" style="color: var(--primary);"></i>
-        <span>Filtros y búsqueda</span>
-      </div>
-      <div class="card-body">
-        <div class="row g-3">
-          <div class="col-md-4">
-            <label for="searchInput" class="form-label">Buscar</label>
-            <div class="input-group">
-              <span class="input-group-text" style="background-color: transparent;">
-                <i class="fas fa-search text-muted"></i>
-              </span>
-              <input 
-                type="text" 
-                class="form-control" 
-                id="searchInput" 
-                v-model="search"
-                placeholder="Nombre, tipo o descripción..."
-              >
+    <!-- Filtros y búsqueda -->
+    <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div class="col-span-1 md:col-span-2">
+          <label for="searchInput" class="block text-sm font-medium text-gray-700 mb-1">Buscar</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <i class="fas fa-search text-gray-400"></i>
             </div>
+            <input 
+              type="text" 
+              class="form-control pl-10" 
+              id="searchInput" 
+              v-model="search"
+              placeholder="Nombre, tipo o descripción..."
+            >
           </div>
-          
-          <div class="col-md-3">
-            <label for="rarityFilter" class="form-label">Rareza</label>
-            <select class="form-select" id="rarityFilter" v-model="rarityFilter">
-              <option value="">Todas</option>
-              <option value="common">Común</option>
-              <option value="uncommon">Poco común</option>
-              <option value="rare">Rara</option>
-              <option value="superRare">Super rara</option>
-              <option value="ultraRare">Ultra rara</option>
-              <option value="legendary">Legendaria</option>
-            </select>
-          </div>
-          
-          <div class="col-md-3">
-            <label for="typeFilter" class="form-label">Tipo</label>
-            <select class="form-select" id="typeFilter" v-model="typeFilter">
-              <option value="">Todos</option>
-              <option value="character">Personaje</option>
-              <option value="support">Soporte</option>
-              <option value="equipment">Equipamiento</option>
-              <option value="event">Evento</option>
-            </select>
-          </div>
-          
-          <div class="col-md-2">
-            <label for="sortOrder" class="form-label">Ordenar por</label>
-            <select class="form-select" id="sortOrder" v-model="sortOrder">
-              <option value="name">Nombre</option>
-              <option value="power">Poder</option>
-              <option value="rarity">Rareza</option>
-              <option value="type">Tipo</option>
-            </select>
-          </div>
+        </div>
+        
+        <div>
+          <label for="rarityFilter" class="block text-sm font-medium text-gray-700 mb-1">Rareza</label>
+          <select class="form-select" id="rarityFilter" v-model="rarityFilter">
+            <option value="">Todas</option>
+            <option value="common">Común</option>
+            <option value="uncommon">Poco común</option>
+            <option value="rare">Rara</option>
+            <option value="superRare">Super rara</option>
+            <option value="ultraRare">Ultra rara</option>
+            <option value="legendary">Legendaria</option>
+          </select>
+        </div>
+        
+        <div>
+          <label for="typeFilter" class="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+          <select class="form-select" id="typeFilter" v-model="typeFilter">
+            <option value="">Todos</option>
+            <option value="character">Personaje</option>
+            <option value="support">Soporte</option>
+            <option value="equipment">Equipamiento</option>
+            <option value="event">Evento</option>
+          </select>
         </div>
       </div>
     </div>
     
     <!-- Lista de cartas -->
-    <div v-if="loading" class="text-center py-5">
-      <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Cargando...</span>
+    <div v-if="loading" class="flex justify-center items-center py-12">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+    </div>
+    
+    <div v-else-if="error" class="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
+      <div class="flex">
+        <div class="flex-shrink-0">
+          <i class="fas fa-exclamation-circle text-red-400"></i>
+        </div>
+        <div class="ml-3">
+          <p class="text-sm text-red-700">{{ error }}</p>
+        </div>
+        <div class="ml-auto pl-3">
+          <button class="btn-outline-danger" @click="loadCards">Reintentar</button>
+        </div>
       </div>
     </div>
-    <div v-else-if="error" class="alert alert-danger">
-      {{ error }}
-      <button class="btn btn-sm btn-outline-danger ms-3" @click="loadCards">Reintentar</button>
-    </div>
+    
     <div v-else>
-      <div v-if="filteredCards.length === 0" class="text-center py-5">
-        <p class="text-muted">No se encontraron cartas que coincidan con los filtros</p>
+      <div v-if="filteredCards.length === 0" class="text-center py-12">
+        <i class="fas fa-search text-gray-400 text-4xl mb-4"></i>
+        <p class="text-gray-500">No se encontraron cartas que coincidan con los filtros</p>
       </div>
-      <div v-else class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 g-4">
-        <div v-for="card in filteredCards" :key="card.id" class="col">
-          <div class="card h-100 shadow-sm">
-            <div class="card-img-top-container">
-              <img :src="prepareImageUrl(card.imageUrl)" class="card-img-top" :alt="card.name">
-              <div class="card-rarity-badge" :class="'rarity-' + card.rarity">
+      
+      <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div v-for="card in filteredCards" :key="card.id" class="card">
+          <div class="relative">
+            <img :src="prepareImageUrl(card.imageUrl)" class="w-full h-48 object-cover rounded-t-lg" :alt="card.name">
+            <div class="absolute top-2 right-2">
+              <span class="badge" :class="'rarity-' + card.rarity">
                 {{ getRarityText(card.rarity) }}
+              </span>
+            </div>
+          </div>
+          
+          <div class="p-4">
+            <div class="flex justify-between items-start mb-2">
+              <h3 class="text-lg font-semibold text-gray-800">{{ card.name }}</h3>
+              <span class="badge bg-gray-100 text-gray-800">{{ getTypeText(card.type) }}</span>
+            </div>
+            
+            <p class="text-sm text-gray-600 mb-4">{{ card.description }}</p>
+            
+            <div class="flex items-center space-x-4 text-sm text-gray-500">
+              <div class="flex items-center">
+                <i class="fas fa-bolt text-yellow-500 mr-1"></i>
+                <span>{{ card.power }}</span>
+              </div>
+              <div class="flex items-center">
+                <i class="fas fa-tag text-blue-500 mr-1"></i>
+                <span>{{ card.series }}</span>
               </div>
             </div>
-            <div class="card-body">
-              <div class="d-flex justify-content-between align-items-start mb-2">
-                <h5 class="card-title mb-0">{{ card.name }}</h5>
-                <span class="badge bg-secondary">{{ getTypeText(card.type) }}</span>
-              </div>
-              <p class="card-text small text-muted">{{ card.description }}</p>
-              <div class="d-flex align-items-center mt-3">
-                <div class="me-3">
-                  <i class="fas fa-bolt text-warning"></i>
-                  <span class="ms-1">{{ card.power }}</span>
-                </div>
-                <div class="me-3">
-                  <i class="fas fa-tag text-info"></i>
-                  <span class="ms-1">{{ card.series }}</span>
-                </div>
-              </div>
-            </div>
-            <div class="card-footer bg-transparent d-flex justify-content-between">
-              <router-link :to="'/cards/' + card.id" class="btn btn-sm btn-outline-primary">
-                <i class="fas fa-edit me-1"></i>Editar
-              </router-link>
-              <button class="btn btn-sm btn-outline-danger" @click="confirmDelete(card)">
-                <i class="fas fa-trash-alt me-1"></i>Eliminar
-              </button>
-            </div>
+          </div>
+          
+          <div class="px-4 py-3 bg-gray-50 rounded-b-lg flex justify-between">
+            <router-link :to="'/cards/' + card.id" class="btn-outline-primary">
+              <i class="fas fa-edit mr-1"></i>Editar
+            </router-link>
+            <button class="btn-outline-danger" @click="confirmDelete(card)">
+              <i class="fas fa-trash-alt mr-1"></i>Eliminar
+            </button>
           </div>
         </div>
       </div>
     </div>
     
     <!-- Modal de confirmación de eliminación -->
-    <div v-if="showDeleteModal" class="modal fade show" style="display: block;" tabindex="-1" aria-modal="true" role="dialog">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Confirmar Eliminación</h5>
-            <button type="button" class="btn-close" @click="showDeleteModal = false"></button>
-          </div>
-          <div class="modal-body">
-            <p>¿Estás seguro de que deseas eliminar la carta <strong>{{ selectedCard?.name }}</strong>?</p>
-            <p class="text-danger">Esta acción no se puede deshacer.</p>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" @click="showDeleteModal = false">Cancelar</button>
-            <button type="button" class="btn btn-danger" @click="deleteCard" :disabled="isDeleting">
-              <span v-if="isDeleting" class="spinner-border spinner-border-sm me-2" role="status"></span>
-              Eliminar
-            </button>
-          </div>
+    <div v-if="showDeleteModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="text-lg font-semibold text-gray-800">Confirmar Eliminación</h3>
+          <button class="modal-close" @click="showDeleteModal = false">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <div class="modal-body">
+          <p class="text-gray-600">¿Estás seguro de que deseas eliminar la carta <strong>{{ selectedCard?.name }}</strong>?</p>
+          <p class="text-red-500 mt-2">Esta acción no se puede deshacer.</p>
+        </div>
+        
+        <div class="modal-footer">
+          <button class="btn-secondary" @click="showDeleteModal = false">Cancelar</button>
+          <button class="btn-danger" @click="deleteCard" :disabled="isDeleting">
+            <span v-if="isDeleting" class="animate-spin mr-2">⌛</span>
+            Eliminar
+          </button>
         </div>
       </div>
-      <div class="modal-backdrop fade show"></div>
     </div>
   </div>
 </template>
@@ -299,80 +300,97 @@ export default {
 </script>
 
 <style scoped>
-.card-img-top-container {
-  position: relative;
-  height: 200px;
-  overflow: hidden;
+.cards-view {
+  @apply p-6;
 }
 
-.card-img-top {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.card {
+  @apply bg-white rounded-lg shadow-sm transition-all duration-300 hover:shadow-md;
 }
 
-.card-rarity-badge {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: bold;
-  color: white;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
-  background-color: rgba(0, 0, 0, 0.5);
+.badge {
+  @apply px-2 py-1 text-xs font-semibold rounded-full;
 }
 
-.rarity-common { background-color: #6c757d; }
-.rarity-uncommon { background-color: #28a745; }
-.rarity-rare { background-color: #007bff; }
-.rarity-superRare { background-color: #6f42c1; }
-.rarity-ultraRare { background-color: #fd7e14; }
-.rarity-legendary { background-color: #dc3545; }
-
-.card-title {
-  font-size: 1.1rem;
-  font-weight: bold;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.rarity-common {
+  @apply bg-gray-100 text-gray-800;
 }
 
-.card-text {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  height: 60px;
+.rarity-uncommon {
+  @apply bg-green-100 text-green-800;
 }
 
-.text-primary {
-  color: #FF5722 !important;
+.rarity-rare {
+  @apply bg-blue-100 text-blue-800;
 }
 
-.btn-primary {
-  background-color: #FF5722;
-  border-color: #FF5722;
+.rarity-superRare {
+  @apply bg-purple-100 text-purple-800;
 }
 
-.btn-primary:hover, .btn-primary:focus {
-  background-color: #E64A19;
-  border-color: #E64A19;
+.rarity-ultraRare {
+  @apply bg-yellow-100 text-yellow-800;
 }
 
-.btn-outline-primary {
-  color: #FF5722;
-  border-color: #FF5722;
-}
-
-.btn-outline-primary:hover, .btn-outline-primary:focus {
-  background-color: #FF5722;
-  border-color: #FF5722;
-  color: white;
+.rarity-legendary {
+  @apply bg-red-100 text-red-800;
 }
 
 .modal {
-  background-color: rgba(0, 0, 0, 0.5);
+  @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50;
+}
+
+.modal-content {
+  @apply bg-white rounded-lg shadow-xl max-w-md w-full;
+}
+
+.modal-header {
+  @apply flex justify-between items-center p-4 border-b;
+}
+
+.modal-body {
+  @apply p-4;
+}
+
+.modal-footer {
+  @apply flex justify-end space-x-3 p-4 border-t;
+}
+
+.modal-close {
+  @apply text-gray-400 hover:text-gray-500;
+}
+
+.btn-primary {
+  @apply bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 py-2 rounded-lg 
+         flex items-center hover:from-orange-600 hover:to-orange-700 transition-all;
+}
+
+.btn-outline-primary {
+  @apply border border-orange-500 text-orange-500 px-3 py-1 rounded-lg 
+         flex items-center hover:bg-orange-50 transition-all;
+}
+
+.btn-outline-danger {
+  @apply border border-red-500 text-red-500 px-3 py-1 rounded-lg 
+         flex items-center hover:bg-red-50 transition-all;
+}
+
+.btn-secondary {
+  @apply bg-gray-100 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-200 transition-all;
+}
+
+.btn-danger {
+  @apply bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-all 
+         flex items-center disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.form-control {
+  @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 
+         focus:ring-orange-500 focus:border-orange-500 transition-all;
+}
+
+.form-select {
+  @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 
+         focus:ring-orange-500 focus:border-orange-500 transition-all;
 }
 </style>

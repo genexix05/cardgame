@@ -13,6 +13,7 @@ import {
   limit 
 } from 'firebase/firestore'
 import { compressAndConvertToBase64 } from '../utils/storage'
+import users from './modules/users'
 
 export default createStore({
   state: {
@@ -21,6 +22,7 @@ export default createStore({
     users: [],
     loading: false,
     error: null,
+    success: null,
     statistics: {
       totalUsers: 0,
       totalCards: 0,
@@ -47,6 +49,9 @@ export default createStore({
     },
     SET_ERROR(state, error) {
       state.error = error
+    },
+    SET_SUCCESS(state, success) {
+      state.success = success
     },
     SET_CARDS(state, cards) {
       state.cards = cards
@@ -679,8 +684,15 @@ export default createStore({
       } finally {
         commit('SET_LOADING', false)
       }
+    },
+    clearError({ commit }) {
+      commit('SET_ERROR', null);
+    },
+    clearSuccess({ commit }) {
+      commit('SET_SUCCESS', null);
     }
   },
   modules: {
+    users
   }
 })

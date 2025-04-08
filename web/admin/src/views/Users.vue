@@ -1,44 +1,46 @@
 <template>
   <div class="users-view">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <!-- Encabezado -->
+    <div class="flex items-center justify-between mb-8">
       <div>
-        <h1 class="fw-bold mb-1">Gestión de Usuarios</h1>
-        <p class="text-muted">Administra todos los usuarios del sistema</p>
+        <h1 class="text-2xl font-bold text-gray-800">Gestión de Usuarios</h1>
+        <p class="text-gray-600 mt-1">Administra todos los usuarios del sistema</p>
       </div>
-      <button class="btn btn-primary d-flex align-items-center" @click="openCreateUserModal">
-        <i class="fas fa-user-plus me-2"></i>Crear Usuario
+      <button class="btn-primary" @click="openCreateUserModal">
+        <i class="fas fa-user-plus mr-2"></i>Crear Usuario
       </button>
     </div>
 
     <!-- Filtros y búsqueda -->
-    <div class="card mb-4">
-      <div class="card-body">
-        <div class="row g-3">
-          <div class="col-md-6">
-            <div class="input-group">
-              <span class="input-group-text">
-                <i class="fas fa-search"></i>
-              </span>
+    <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="col-span-1 md:col-span-2">
+          <label for="searchInput" class="block text-sm font-medium text-gray-700 mb-1">Buscar</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <i class="fas fa-search text-gray-400"></i>
+            </div>
               <input 
                 type="text" 
-                class="form-control" 
-                placeholder="Buscar por nombre, email o ID..." 
+              class="form-control pl-10" 
+              id="searchInput"
+              placeholder="Nombre, email o ID..." 
                 v-model="searchQuery"
                 @input="debounceSearch"
               >
               <button 
-                class="btn btn-outline-secondary" 
-                type="button"
-                @click="clearSearch"
                 v-if="searchQuery"
+              class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500"
+              @click="clearSearch"
               >
                 <i class="fas fa-times"></i>
               </button>
             </div>
           </div>
           
-          <div class="col-md-3">
-            <select class="form-select" v-model="roleFilter">
+        <div>
+          <label for="roleFilter" class="block text-sm font-medium text-gray-700 mb-1">Rol</label>
+          <select class="form-select" id="roleFilter" v-model="roleFilter">
               <option value="">Todos los roles</option>
               <option value="user">Usuario normal</option>
               <option value="premium">Usuario premium</option>
@@ -46,8 +48,9 @@
             </select>
           </div>
           
-          <div class="col-md-3">
-            <select class="form-select" v-model="sortBy">
+        <div>
+          <label for="sortBy" class="block text-sm font-medium text-gray-700 mb-1">Ordenar por</label>
+          <select class="form-select" id="sortBy" v-model="sortBy">
               <option value="registrationDate_desc">Registro (más reciente)</option>
               <option value="registrationDate_asc">Registro (más antiguo)</option>
               <option value="lastLogin_desc">Último acceso (más reciente)</option>
@@ -60,126 +63,116 @@
           </div>
         </div>
       </div>
+
+    <!-- Lista de usuarios -->
+    <div v-if="loading" class="flex justify-center items-center py-12">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
     </div>
 
-    <!-- Tabla de usuarios -->
-    <div class="card mb-4">
-      <div class="table-responsive">
-        <table class="table table-hover table-striped align-middle mb-0">
-          <thead class="table-light">
-            <tr>
-              <th scope="col" style="width: 60px">#</th>
-              <th scope="col">Usuario</th>
-              <th scope="col">Email</th>
-              <th scope="col">Rol</th>
-              <th scope="col">Registro</th>
-              <th scope="col">Último acceso</th>
-              <th scope="col">Colección</th>
-              <th scope="col">Estado</th>
-              <th scope="col" class="text-end">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-if="loading">
-              <td colspan="9" class="text-center py-4">
-                <div class="spinner-border text-primary" role="status">
-                  <span class="visually-hidden">Cargando...</span>
+    <div v-else-if="error" class="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
+      <div class="flex">
+        <div class="flex-shrink-0">
+          <i class="fas fa-exclamation-circle text-red-400"></i>
                 </div>
-                <p class="mt-2 text-muted">Cargando usuarios...</p>
-              </td>
-            </tr>
-            
-            <tr v-else-if="!users.length">
-              <td colspan="9" class="text-center py-4">
-                <p class="mb-0" v-if="searchQuery || roleFilter">
-                  <i class="fas fa-search me-2"></i>No se encontraron usuarios con los filtros aplicados.
-                </p>
-                <p class="mb-0" v-else>
-                  <i class="fas fa-users-slash me-2"></i>No hay usuarios registrados en el sistema.
-                </p>
-              </td>
-            </tr>
-            
-            <tr v-for="(user, index) in users" :key="user.id">
-              <td class="text-muted">{{ (currentPage - 1) * pageSize + index + 1 }}</td>
-              
-              <td>
-                <div class="d-flex align-items-center">
-                  <div class="flex-shrink-0 me-2">
-                    <div class="user-avatar">
+        <div class="ml-3">
+          <p class="text-sm text-red-700">{{ error }}</p>
+        </div>
+        <div class="ml-auto pl-3">
+          <button class="btn-outline-danger" @click="loadUsers">Reintentar</button>
+        </div>
+      </div>
+    </div>
+    
+    <div v-else>
+      <div v-if="!users.length" class="text-center py-12">
+        <i class="fas fa-users-slash text-gray-400 text-4xl mb-4"></i>
+        <p class="text-gray-500">
+          <span v-if="searchQuery || roleFilter">
+            No se encontraron usuarios con los filtros aplicados
+          </span>
+          <span v-else>
+            No hay usuarios registrados en el sistema
+          </span>
+        </p>
+      </div>
+      
+      <div v-else class="bg-white rounded-lg shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rol</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Registro</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Último acceso</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Colección</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+              <tr v-for="user in users" :key="user.id" class="hover:bg-gray-50">
+                <td class="px-6 py-4">
+                  <div class="flex items-center">
+                    <div class="flex-shrink-0 h-10 w-10">
                       <img 
                         :src="user.photoURL || '/assets/default-avatar.png'" 
                         :alt="user.displayName || 'Usuario'" 
-                        class="rounded-circle"
+                        class="h-10 w-10 rounded-full"
                       >
                     </div>
-                  </div>
-                  <div class="flex-grow-1">
-                    <div class="fw-medium">{{ user.displayName || 'Usuario sin nombre' }}</div>
-                    <small class="text-muted">ID: {{ user.id }}</small>
+                    <div class="ml-4">
+                      <div class="text-sm font-medium text-gray-900">{{ user.displayName || 'Usuario sin nombre' }}</div>
+                      <div class="text-sm text-gray-500">ID: {{ user.id }}</div>
                   </div>
                 </div>
               </td>
               
-              <td>
-                <div>{{ user.email }}</div>
-                <small v-if="user.emailVerified" class="text-success">
-                  <i class="fas fa-check-circle me-1"></i>Verificado
-                </small>
-                <small v-else class="text-warning">
-                  <i class="fas fa-exclamation-circle me-1"></i>Sin verificar
-                </small>
+                <td class="px-6 py-4">
+                  <div class="text-sm text-gray-900">{{ user.email }}</div>
+                  <div class="text-xs" :class="user.emailVerified ? 'text-green-600' : 'text-yellow-600'">
+                    <i :class="user.emailVerified ? 'fas fa-check-circle' : 'fas fa-exclamation-circle'" class="mr-1"></i>
+                    {{ user.emailVerified ? 'Verificado' : 'Sin verificar' }}
+                  </div>
               </td>
               
-              <td>
-                <span 
-                  class="badge rounded-pill"
-                  :class="{
-                    'bg-info': user.role === 'admin',
-                    'bg-success': user.role === 'premium',
-                    'bg-secondary': user.role === 'user' || !user.role
-                  }"
-                >
+                <td class="px-6 py-4">
+                  <span class="badge" :class="getRoleBadgeClass(user.role)">
                   {{ getRoleName(user.role) }}
                 </span>
               </td>
               
-              <td>
-                <div>{{ formatDate(user.registrationDate) }}</div>
-                <small class="text-muted">{{ formatTimeAgo(user.registrationDate) }}</small>
+                <td class="px-6 py-4">
+                  <div class="text-sm text-gray-900">{{ formatDate(user.registrationDate) }}</div>
+                  <div class="text-xs text-gray-500">{{ formatTimeAgo(user.registrationDate) }}</div>
               </td>
               
-              <td>
-                <div>{{ formatDate(user.lastLogin) }}</div>
-                <small class="text-muted">{{ formatTimeAgo(user.lastLogin) }}</small>
+                <td class="px-6 py-4">
+                  <div class="text-sm text-gray-900">{{ formatDate(user.lastLogin) }}</div>
+                  <div class="text-xs text-gray-500">{{ formatTimeAgo(user.lastLogin) }}</div>
               </td>
               
-              <td>
-                <div class="d-flex align-items-center">
-                  <i class="fas fa-layer-group me-2 text-muted"></i>
+                <td class="px-6 py-4">
+                  <div class="flex items-center">
+                    <i class="fas fa-layer-group text-gray-400 mr-2"></i>
                   <div>
-                    <div class="fw-medium">{{ user.stats?.cardsCount || 0 }} cartas</div>
-                    <small class="text-muted">{{ user.stats?.packsOpened || 0 }} sobres</small>
+                      <div class="text-sm font-medium text-gray-900">{{ user.stats?.cardsCount || 0 }} cartas</div>
+                      <div class="text-xs text-gray-500">{{ user.stats?.packsOpened || 0 }} sobres</div>
                   </div>
                 </div>
               </td>
               
-              <td>
-                <span 
-                  class="badge"
-                  :class="{
-                    'bg-success': !user.disabled,
-                    'bg-danger': user.disabled
-                  }"
-                >
+                <td class="px-6 py-4">
+                  <span class="badge" :class="user.disabled ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'">
                   {{ user.disabled ? 'Bloqueado' : 'Activo' }}
                 </span>
               </td>
               
-              <td class="text-end">
-                <div class="btn-group">
+                <td class="px-6 py-4 text-right">
+                  <div class="flex justify-end space-x-2">
                   <button 
-                    class="btn btn-sm btn-outline-primary" 
+                      class="btn-action btn-view"
                     @click="viewUserDetails(user.id)"
                     title="Ver detalles"
                   >
@@ -187,7 +180,7 @@
                   </button>
                   
                   <button 
-                    class="btn btn-sm btn-outline-secondary" 
+                      class="btn-action btn-edit"
                     @click="editUserRole(user)"
                     title="Cambiar rol"
                   >
@@ -195,8 +188,8 @@
                   </button>
                   
                   <button 
-                    class="btn btn-sm" 
-                    :class="user.disabled ? 'btn-outline-success' : 'btn-outline-danger'"
+                      class="btn-action"
+                      :class="user.disabled ? 'btn-success' : 'btn-danger'"
                     @click="toggleUserStatus(user)"
                     :title="user.disabled ? 'Activar cuenta' : 'Bloquear cuenta'"
                   >
@@ -207,359 +200,191 @@
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
     </div>
 
     <!-- Paginación -->
-    <nav aria-label="Paginación de usuarios" v-if="totalPages > 1">
-      <ul class="pagination justify-content-center">
-        <li class="page-item" :class="{ disabled: currentPage === 1 }">
-          <a class="page-link" href="#" @click.prevent="changePage(currentPage - 1)">
-            <i class="fas fa-chevron-left"></i>
-          </a>
-        </li>
-        
-        <li v-for="page in paginationNumbers" :key="page" class="page-item" :class="{ active: currentPage === page }">
-          <a class="page-link" href="#" @click.prevent="changePage(page)">{{ page }}</a>
-        </li>
-        
-        <li class="page-item" :class="{ disabled: currentPage === totalPages }">
-          <a class="page-link" href="#" @click.prevent="changePage(currentPage + 1)">
-            <i class="fas fa-chevron-right"></i>
-          </a>
-        </li>
-      </ul>
-      
-      <div class="text-center mt-2">
-        <small class="text-muted">
+    <div v-if="totalPages > 1" class="mt-6">
+      <div class="flex items-center justify-between">
+        <div class="text-sm text-gray-500">
           Mostrando {{ (currentPage - 1) * pageSize + 1 }} - {{ Math.min(currentPage * pageSize, totalUsers) }} de {{ totalUsers }} usuarios
-        </small>
+        </div>
+        
+        <div class="flex space-x-1">
+          <button 
+            class="btn-secondary btn-sm"
+            :disabled="currentPage === 1"
+            @click="changePage(currentPage - 1)"
+          >
+            <i class="fas fa-chevron-left"></i>
+          </button>
+          
+          <button 
+            v-for="page in paginationNumbers" 
+            :key="page"
+            class="btn-sm"
+            :class="currentPage === page ? 'btn-primary' : 'btn-secondary'"
+            @click="changePage(page)"
+          >
+            {{ page }}
+          </button>
+          
+          <button 
+            class="btn-secondary btn-sm"
+            :disabled="currentPage === totalPages"
+            @click="changePage(currentPage + 1)"
+          >
+            <i class="fas fa-chevron-right"></i>
+          </button>
       </div>
-    </nav>
+      </div>
+    </div>
 
     <!-- Modal de cambio de rol -->
-    <div class="modal fade" id="roleModal" tabindex="-1" aria-labelledby="roleModalLabel" aria-hidden="true" ref="roleModal">
-      <div class="modal-dialog">
+    <div v-if="showRoleModal" class="modal">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" id="roleModalLabel">Cambiar rol de usuario</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          <h3 class="text-lg font-semibold text-gray-800">Cambiar rol de usuario</h3>
+          <button class="modal-close" @click="showRoleModal = false">
+            <i class="fas fa-times"></i>
+          </button>
           </div>
-          <div class="modal-body">
-            <p>Estás cambiando el rol del usuario <strong>{{ selectedUser?.displayName || 'Usuario' }}</strong>.</p>
-            
-            <div class="form-group">
-              <label for="userRole" class="form-label">Selecciona un rol:</label>
-              <select class="form-select" id="userRole" v-model="selectedRole">
+        
+        <div class="modal-body">
+          <p class="text-gray-600">Estás cambiando el rol del usuario <strong>{{ selectedUser?.displayName || 'Usuario' }}</strong>.</p>
+          <div class="mt-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Nuevo rol</label>
+            <select class="form-select" v-model="newRole">
                 <option value="user">Usuario normal</option>
                 <option value="premium">Usuario premium</option>
                 <option value="admin">Administrador</option>
               </select>
             </div>
-            
-            <div class="mt-3 alert alert-warning" v-if="selectedRole === 'admin'">
-              <i class="fas fa-exclamation-triangle me-2"></i>
-              <strong>Advertencia:</strong> Los administradores tienen acceso completo al panel de administración y a todas las funcionalidades del sistema.
             </div>
-          </div>
+        
           <div class="modal-footer">
-            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-              <i class="fas fa-times me-2"></i>Cancelar
-            </button>
-            <button 
-              type="button" 
-              class="btn btn-primary d-flex align-items-center justify-content-center" 
-              @click="saveUserRole" 
-              :disabled="roleUpdateLoading"
-              style="min-width: 140px;"
-            >
-              <span v-if="roleUpdateLoading" class="spinner-border spinner-border-sm me-2" role="status"></span>
-              <i v-else class="fas fa-save me-2"></i>
+          <button class="btn-secondary" @click="showRoleModal = false">Cancelar</button>
+          <button class="btn-primary" @click="updateUserRole" :disabled="isUpdatingRole">
+            <span v-if="isUpdatingRole" class="animate-spin mr-2">⌛</span>
               Guardar cambios
             </button>
-          </div>
         </div>
       </div>
     </div>
 
     <!-- Modal de detalles de usuario -->
-    <div class="modal fade" id="userDetailsModal" tabindex="-1" aria-labelledby="userDetailsModalLabel" aria-hidden="true" ref="userDetailsModal">
-      <div class="modal-dialog modal-lg">
-        <div class="modal-content">
+    <div v-if="showUserDetailsModal" class="modal">
+      <div class="modal-content max-w-3xl">
           <div class="modal-header">
-            <h5 class="modal-title" id="userDetailsModalLabel">Detalles del usuario</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          <h3 class="text-lg font-semibold text-gray-800">
+            Detalles del usuario
+            <span v-if="userDetailsLoading" class="ml-2 text-sm text-gray-500">(Cargando...)</span>
+          </h3>
+          <button class="modal-close" @click="showUserDetailsModal = false">
+            <i class="fas fa-times"></i>
+          </button>
           </div>
+        
           <div class="modal-body">
-            <div class="text-center mb-4" v-if="userDetailsLoading">
-              <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Cargando...</span>
+          <div v-if="error" class="bg-red-50 text-red-600 p-4 rounded-lg mb-4">
+            {{ error }}
               </div>
-              <p class="mt-2 text-muted">Cargando detalles del usuario...</p>
+
+          <div v-if="userDetailsLoading" class="flex justify-center py-8">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
             </div>
             
-            <div v-else-if="userDetails">
+          <div v-else-if="userDetails" class="space-y-6">
               <!-- Información básica -->
-              <div class="d-flex mb-4">
-                <div class="flex-shrink-0 me-3">
+            <div class="bg-gray-50 rounded-lg p-4">
+              <div class="flex items-center space-x-4">
                   <img 
                     :src="userDetails.photoURL || '/assets/default-avatar.png'" 
                     :alt="userDetails.displayName || 'Usuario'" 
-                    class="rounded-circle user-details-avatar"
-                  >
-                </div>
-                <div class="flex-grow-1">
-                  <h4 class="mb-1">{{ userDetails.displayName || 'Usuario sin nombre' }}</h4>
-                  <p class="text-muted mb-1">{{ userDetails.email }}</p>
-                  <div class="mb-2">
-                    <span 
-                      class="badge rounded-pill me-2"
-                      :class="{
-                        'bg-info': userDetails.role === 'admin',
-                        'bg-success': userDetails.role === 'premium',
-                        'bg-secondary': userDetails.role === 'user' || !userDetails.role
-                      }"
-                    >
-                      {{ getRoleName(userDetails.role) }}
+                  class="h-16 w-16 rounded-full object-cover"
+                  @error="$event.target.src = '/assets/default-avatar.png'"
+                >
+                <div>
+                  <h4 class="text-lg font-semibold text-gray-800">
+                    {{ userDetails.displayName || 'Usuario sin nombre' }}
+                  </h4>
+                  <p class="text-gray-600">{{ userDetails.email }}</p>
+                  <div class="mt-2 flex flex-wrap gap-2">
+                    <span class="badge" :class="getRoleBadgeClass(userDetails.role)">
+                      {{ getRoleName(userDetails.role || 'user') }}
                     </span>
-                    <span 
-                      class="badge rounded-pill"
-                      :class="{
-                        'bg-success': !userDetails.disabled,
-                        'bg-danger': userDetails.disabled
-                      }"
-                    >
+                    <span class="badge" :class="userDetails.disabled ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'">
                       {{ userDetails.disabled ? 'Bloqueado' : 'Activo' }}
                     </span>
                   </div>
-                  <small class="text-muted">ID: {{ userDetails.id }}</small>
+                    </div>
+                  </div>
+                </div>
+                
+            <!-- Estadísticas -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="bg-white rounded-lg p-4 shadow-sm">
+                <h5 class="text-sm font-medium text-gray-500">Cartas en colección</h5>
+                <p class="text-2xl font-semibold text-gray-800">{{ userDetails.stats?.cardsCount || 0 }}</p>
+                    </div>
+              <div class="bg-white rounded-lg p-4 shadow-sm">
+                <h5 class="text-sm font-medium text-gray-500">Sobres abiertos</h5>
+                <p class="text-2xl font-semibold text-gray-800">{{ userDetails.stats?.packsOpened || 0 }}</p>
+                            </div>
+              <div class="bg-white rounded-lg p-4 shadow-sm">
+                <h5 class="text-sm font-medium text-gray-500">Último acceso</h5>
+                <p class="text-sm text-gray-800">
+                  {{ userDetails.lastLogin ? formatDate(userDetails.lastLogin, true) : 'Nunca' }}
+                </p>
                 </div>
               </div>
               
-              <!-- Estadísticas y datos de juego -->
-              <div class="row mb-4">
-                <div class="col-md-6">
-                  <div class="card h-100">
-                    <div class="card-header">
-                      <h6 class="mb-0">Información de cuenta</h6>
-                    </div>
-                    <div class="card-body">
-                      <ul class="list-group list-group-flush">
-                        <li class="list-group-item d-flex justify-content-between align-items-start">
-                          <div>
-                            <div class="fw-medium">Registro</div>
-                            <small class="text-muted">{{ formatDate(userDetails.registrationDate, true) }}</small>
-                          </div>
-                          <span class="text-muted">{{ formatTimeAgo(userDetails.registrationDate) }}</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-start">
-                          <div>
-                            <div class="fw-medium">Último acceso</div>
-                            <small class="text-muted">{{ formatDate(userDetails.lastLogin, true) }}</small>
-                          </div>
-                          <span class="text-muted">{{ formatTimeAgo(userDetails.lastLogin) }}</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-start">
-                          <div class="fw-medium">Email verificado</div>
-                          <span v-if="userDetails.emailVerified" class="text-success">
-                            <i class="fas fa-check-circle me-1"></i>Sí
-                          </span>
-                          <span v-else class="text-warning">
-                            <i class="fas fa-exclamation-circle me-1"></i>No
-                          </span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-start">
-                          <div class="fw-medium">Dispositivo</div>
-                          <span class="text-muted">{{ userDetails.deviceInfo || 'Desconocido' }}</span>
-                        </li>
-                      </ul>
+            <!-- Colección de cartas -->
+            <div v-if="userCards.length > 0" class="border rounded-lg overflow-hidden">
+              <div class="bg-gray-50 px-4 py-2 border-b">
+                <h4 class="font-medium text-gray-700">Cartas en colección</h4>
+                  </div>
+              <div class="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                <div v-for="card in userCards" :key="card.id" class="bg-white rounded shadow-sm p-2">
+                  <img 
+                    :src="card.imageUrl || '/assets/card-placeholder.png'" 
+                    :alt="card.name"
+                    class="w-full h-32 object-cover rounded"
+                    @error="$event.target.src = '/assets/card-placeholder.png'"
+                  >
+                  <div class="mt-2">
+                    <p class="text-sm font-medium text-gray-800">{{ card.name }}</p>
+                    <p class="text-xs text-gray-500">{{ getRarityName(card.rarity) }}</p>
+                        </div>
                     </div>
                   </div>
                 </div>
                 
-                <div class="col-md-6">
-                  <div class="card h-100">
-                    <div class="card-header">
-                      <h6 class="mb-0">Estadísticas de juego</h6>
-                    </div>
-                    <div class="card-body">
-                      <ul class="list-group list-group-flush">
-                        <li class="list-group-item d-flex justify-content-between align-items-start">
-                          <div class="fw-medium">Cartas coleccionadas</div>
-                          <span class="badge bg-primary rounded-pill">{{ userDetails.stats?.cardsCount || 0 }}</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                          <div class="d-flex align-items-center">
-                            <div class="icon-wrapper me-2" style="background-color: rgba(79, 70, 229, 0.1); padding: 8px; border-radius: 8px;">
-                              <i class="fas fa-box-open" style="color: var(--primary); font-size: 14px;"></i>
-                            </div>
-                            <div class="fw-medium">Sobres abiertos</div>
-                          </div>
-                          <span class="badge bg-primary rounded-pill">{{ userDetails.stats?.packsOpened || 0 }}</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                          <div class="d-flex align-items-center">
-                            <div class="icon-wrapper me-2" style="background-color: rgba(245, 158, 11, 0.1); padding: 8px; border-radius: 8px;">
-                              <i class="fas fa-coins" style="color: var(--warning); font-size: 14px;"></i>
-                            </div>
-                            <div class="fw-medium">Monedas actuales</div>
-                          </div>
-                          <span class="badge bg-warning text-dark rounded-pill">{{ userDetails.stats?.coins || 0 }}</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                          <div class="d-flex align-items-center">
-                            <div class="icon-wrapper me-2" style="background-color: rgba(239, 68, 68, 0.1); padding: 8px; border-radius: 8px;">
-                              <i class="fas fa-crown" style="color: var(--danger); font-size: 14px;"></i>
-                            </div>
-                            <div class="fw-medium">Cartas legendarias</div>
-                          </div>
-                          <span class="badge bg-danger rounded-pill">{{ userDetails.stats?.legendaryCards || 0 }}</span>
-                        </li>
-                      </ul>
-                    </div>
+            <!-- Actividad reciente -->
+            <div>
+              <h4 class="text-lg font-semibold text-gray-800 mb-4">Actividad reciente</h4>
+              <div class="space-y-4">
+                <div v-for="activity in userActivity" :key="activity.id" 
+                     class="flex items-start space-x-3 p-3 bg-white rounded-lg shadow-sm">
+                  <div class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100">
+                    <i :class="getActivityIcon(activity.type)" class="text-lg text-gray-600"></i>
                   </div>
-                </div>
-              </div>
-              
-              <!-- Tabs con información adicional -->
-              <ul class="nav nav-tabs" id="userDetailsTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                  <button 
-                    class="nav-link active" 
-                    id="cards-tab" 
-                    data-bs-toggle="tab" 
-                    data-bs-target="#cards-tab-pane" 
-                    type="button" 
-                    role="tab"
-                  >
-                    <i class="fas fa-layer-group me-2"></i>Colección
-                  </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                  <button 
-                    class="nav-link" 
-                    id="activity-tab" 
-                    data-bs-toggle="tab" 
-                    data-bs-target="#activity-tab-pane" 
-                    type="button" 
-                    role="tab"
-                  >
-                    <i class="fas fa-history me-2"></i>Actividad
-                  </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                  <button 
-                    class="nav-link" 
-                    id="notes-tab" 
-                    data-bs-toggle="tab" 
-                    data-bs-target="#notes-tab-pane" 
-                    type="button" 
-                    role="tab"
-                  >
-                    <i class="fas fa-sticky-note me-2"></i>Notas
-                  </button>
-                </li>
-              </ul>
-              
-              <div class="tab-content mt-3" id="userDetailsTabContent">
-                <!-- Pestaña de colección de cartas -->
-                <div class="tab-pane fade show active" id="cards-tab-pane" role="tabpanel" aria-labelledby="cards-tab" tabindex="0">
-                  <div v-if="userCards.length === 0" class="text-center py-4">
-                    <p class="text-muted mb-0">
-                      <i class="fas fa-layer-group me-2"></i>Este usuario no tiene cartas en su colección.
-                    </p>
-                  </div>
-                  
-                  <div v-else class="row row-cols-1 row-cols-md-4 g-3">
-                    <div v-for="card in userCards" :key="card.id" class="col">
-                      <div class="card h-100 user-card-item" :class="{'border-warning': card.rarity === 'legendary'}">
-                        <div class="card-img-top user-card-image">
-                          <img :src="card.imageUrl" :alt="card.name" class="img-fluid">
-                          <span 
-                            class="badge position-absolute top-0 end-0 m-2"
-                            :class="{
-                              'bg-secondary': card.rarity === 'common',
-                              'bg-success': card.rarity === 'uncommon',
-                              'bg-primary': card.rarity === 'rare',
-                              'bg-info': card.rarity === 'superRare',
-                              'bg-warning': card.rarity === 'ultraRare',
-                              'bg-danger': card.rarity === 'legendary'
-                            }"
-                          >
-                            {{ getRarityName(card.rarity) }}
-                          </span>
-                        </div>
-                        <div class="card-body">
-                          <h6 class="card-title">{{ card.name }}</h6>
-                          <p class="card-text small text-muted">{{ card.series }}</p>
-                        </div>
-                        <div class="card-footer d-flex justify-content-between">
-                          <small class="text-muted">ID: {{ card.id }}</small>
-                          <small class="fw-medium">x{{ card.count }}</small>
-                        </div>
+                  <div class="flex-1">
+                    <p class="text-sm text-gray-800">{{ getActivityDescription(activity) }}</p>
+                    <p class="text-xs text-gray-500">{{ formatTimeAgo(activity.timestamp) }}</p>
                       </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- Pestaña de actividad reciente -->
-                <div class="tab-pane fade" id="activity-tab-pane" role="tabpanel" aria-labelledby="activity-tab" tabindex="0">
-                  <div v-if="userActivity.length === 0" class="text-center py-4">
-                    <p class="text-muted mb-0">
-                      <i class="fas fa-history me-2"></i>No hay registros de actividad para este usuario.
-                    </p>
-                  </div>
-                  
-                  <div v-else class="activity-timeline">
-                    <div v-for="(activity, index) in userActivity" :key="index" class="activity-item">
-                      <div class="activity-icon">
-                        <i :class="getActivityIcon(activity.type)"></i>
                       </div>
-                      <div class="activity-content">
-                        <p class="mb-1">{{ getActivityDescription(activity) }}</p>
-                        <small class="text-muted">{{ formatDate(activity.timestamp, true) }} ({{ formatTimeAgo(activity.timestamp) }})</small>
-                      </div>
+                <div v-if="!userActivity.length" class="text-center py-4 text-gray-500">
+                  No hay actividad reciente
                     </div>
                   </div>
-                </div>
-                
-                <!-- Pestaña de notas de administrador -->
-                <div class="tab-pane fade" id="notes-tab-pane" role="tabpanel" aria-labelledby="notes-tab" tabindex="0">
-                  <form @submit.prevent="saveAdminNotes">
-                    <div class="form-group">
-                      <label for="adminNotes" class="form-label">Notas internas (solo visible para administradores)</label>
-                      <textarea 
-                        class="form-control" 
-                        id="adminNotes" 
-                        v-model="userDetails.adminNotes" 
-                        rows="4" 
-                        placeholder="Añade notas sobre este usuario aquí..."
-                      ></textarea>
-                    </div>
-                    <div class="text-end mt-3">
-                      <button 
-                        type="submit" 
-                        class="btn btn-primary" 
-                        :disabled="notesUpdateLoading"
-                      >
-                        <span v-if="notesUpdateLoading" class="spinner-border spinner-border-sm me-2" role="status"></span>
-                        Guardar notas
-                      </button>
-                    </div>
-                  </form>
                 </div>
               </div>
             </div>
             
-            <div v-else class="text-center py-4">
-              <p class="text-muted mb-0">
-                <i class="fas fa-exclamation-circle me-2"></i>No se pudieron cargar los detalles del usuario.
-              </p>
-            </div>
-          </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-          </div>
+          <button class="btn-secondary" @click="showUserDetailsModal = false">Cerrar</button>
         </div>
       </div>
     </div>
@@ -569,7 +394,6 @@
 <script>
 import { ref, computed, onMounted, watch } from 'vue';
 import { useStore } from 'vuex';
-import { Modal } from 'bootstrap';
 
 export default {
   name: 'UsersView',
@@ -578,6 +402,7 @@ export default {
     
     // Estado
     const loading = ref(false);
+    const error = ref(null);
     const users = ref([]);
     const totalUsers = ref(0);
     const searchQuery = ref('');
@@ -587,13 +412,13 @@ export default {
     const pageSize = ref(10);
     
     // Modal de rol
-    const roleModal = ref(null);
+    const showRoleModal = ref(false);
     const selectedUser = ref(null);
-    const selectedRole = ref('user');
-    const roleUpdateLoading = ref(false);
+    const newRole = ref('user');
+    const isUpdatingRole = ref(false);
     
     // Modal de detalles
-    const userDetailsModal = ref(null);
+    const showUserDetailsModal = ref(false);
     const userDetails = ref(null);
     const userDetailsLoading = ref(false);
     const userCards = ref([]);
@@ -700,49 +525,34 @@ export default {
     // Abrir modal de cambio de rol
     const editUserRole = (user) => {
       selectedUser.value = user;
-      selectedRole.value = user.role || 'user';
-      
-      // Asegurarse de que el modal esté inicializado correctamente
-      if (!roleModal.value) {
-        const roleModalEl = document.getElementById('roleModal');
-        if (roleModalEl) {
-          roleModal.value = new Modal(roleModalEl);
-        } else {
-          console.error('No se pudo encontrar el elemento del modal de roles de usuario');
-          return;
-        }
-      }
-      
-      // Mostrar el modal
-      roleModal.value.show();
+      newRole.value = user.role || 'user';
+      showRoleModal.value = true;
     };
     
     // Guardar cambio de rol
-    const saveUserRole = async () => {
+    const updateUserRole = async () => {
       if (!selectedUser.value) return;
       
-      roleUpdateLoading.value = true;
+      isUpdatingRole.value = true;
       
       try {
         await store.dispatch('updateUserRole', {
           userId: selectedUser.value.id,
-          role: selectedRole.value
+          role: newRole.value
         });
         
         // Actualizar en la lista local
         const userIndex = users.value.findIndex(u => u.id === selectedUser.value.id);
         if (userIndex >= 0) {
-          users.value[userIndex].role = selectedRole.value;
+          users.value[userIndex].role = newRole.value;
         }
         
-        if (roleModal.value) {
-          roleModal.value.hide();
-        }
+        showRoleModal.value = false;
       } catch (err) {
         console.error('Error al cambiar el rol del usuario:', err);
         store.commit('SET_ERROR', 'Error al actualizar el rol del usuario');
       } finally {
-        roleUpdateLoading.value = false;
+        isUpdatingRole.value = false;
       }
     };
     
@@ -772,37 +582,49 @@ export default {
     // Ver detalles de usuario
     const viewUserDetails = async (userId) => {
       userDetailsLoading.value = true;
-      userDetails.value = null;
-      userCards.value = [];
-      userActivity.value = [];
-      
-      // Asegurarse de que el modal esté inicializado correctamente
-      if (!userDetailsModal.value) {
-        const userDetailsModalEl = document.getElementById('userDetailsModal');
-        if (userDetailsModalEl) {
-          userDetailsModal.value = new Modal(userDetailsModalEl);
-        } else {
-          console.error('No se pudo encontrar el elemento del modal de detalles de usuario');
-          return;
-        }
-      }
-      
-      // Mostrar el modal
-      userDetailsModal.value.show();
+      error.value = null;
       
       try {
         // Cargar detalles completos del usuario
-        const userData = await store.dispatch('fetchUserDetails', userId);
-        userDetails.value = userData;
+        const userData = await store.dispatch('users/fetchUserDetails', userId);
+        if (!userData) {
+          throw new Error('No se pudieron cargar los datos del usuario');
+        }
+        userDetails.value = {
+          ...userData,
+          stats: userData.stats || {
+            cardsCount: 0,
+            packsOpened: 0
+          }
+        };
+
+        // Mostrar el modal después de cargar los datos básicos
+        showUserDetailsModal.value = true;
         
-        // Cargar colección de cartas
-        userCards.value = await store.dispatch('fetchUserCards', userId);
+        // Cargar datos adicionales
+        const [cards, activity] = await Promise.all([
+          store.dispatch('users/fetchUserCards', userId),
+          store.dispatch('users/fetchUserActivity', userId)
+        ]);
         
-        // Cargar historial de actividad
-        userActivity.value = await store.dispatch('fetchUserActivity', userId);
+        userCards.value = cards || [];
+        userActivity.value = activity || [];
+        
+        // Actualizar estadísticas si es necesario
+        if (cards && !userDetails.value.stats?.cardsCount) {
+          userDetails.value = {
+            ...userDetails.value,
+            stats: {
+              ...userDetails.value.stats,
+              cardsCount: cards.length
+            }
+          };
+        }
+        
       } catch (err) {
         console.error('Error al cargar detalles del usuario:', err);
-        store.commit('SET_ERROR', 'Error al cargar los detalles del usuario');
+        error.value = 'Error al cargar los detalles del usuario: ' + err.message;
+        showUserDetailsModal.value = false;
       } finally {
         userDetailsLoading.value = false;
       }
@@ -930,25 +752,6 @@ export default {
     // Inicializar
     onMounted(() => {
       loadUsers();
-      
-      // Inicializar modales con un pequeño retraso para asegurar que el DOM esté listo
-      setTimeout(() => {
-        if (typeof document !== 'undefined') {
-          const roleModalEl = document.getElementById('roleModal');
-          if (roleModalEl) {
-            roleModal.value = new Modal(roleModalEl);
-          } else {
-            console.warn('No se encontró el elemento roleModal en el DOM');
-          }
-          
-          const userDetailsModalEl = document.getElementById('userDetailsModal');
-          if (userDetailsModalEl) {
-            userDetailsModal.value = new Modal(userDetailsModalEl);
-          } else {
-            console.warn('No se encontró el elemento userDetailsModal en el DOM');
-          }
-        }
-      }, 200); // Pequeño retraso para garantizar que el DOM esté completamente cargado
     });
     
     // Observar cambios en filtros
@@ -960,6 +763,7 @@ export default {
     return {
       // Estado
       loading,
+      error,
       users,
       totalUsers,
       searchQuery,
@@ -970,14 +774,14 @@ export default {
       totalPages,
       paginationNumbers,
       
-      // Referencias a modales
-      roleModal,
-      userDetailsModal,
+      // Modales
+      showRoleModal,
+      showUserDetailsModal,
       
       // Datos de modales
       selectedUser,
-      selectedRole,
-      roleUpdateLoading,
+      newRole,
+      isUpdatingRole,
       userDetails,
       userDetailsLoading,
       userCards,
@@ -991,7 +795,7 @@ export default {
       changePage,
       exportUsers,
       editUserRole,
-      saveUserRole,
+      updateUserRole,
       toggleUserStatus,
       viewUserDetails,
       saveAdminNotes,
@@ -1002,113 +806,100 @@ export default {
       getRoleName,
       getRarityName,
       getActivityIcon,
-      getActivityDescription
+      getActivityDescription,
+      getRoleBadgeClass: (role) => {
+        switch (role) {
+          case 'admin': return 'role-admin';
+          case 'premium': return 'role-premium';
+          case 'user': return 'role-user';
+          default: return 'role-user';
+        }
+      }
     };
   }
 };
 </script>
 
 <style scoped>
-.user-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #f8f9fa;
+.users-view {
+  @apply p-6;
 }
 
-.user-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.badge {
+  @apply px-2 py-1 text-xs font-semibold rounded-full;
 }
 
-.user-details-avatar {
-  width: 100px;
-  height: 100px;
-  object-fit: cover;
+.modal {
+  @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4;
 }
 
-.user-card-item {
-  transition: transform 0.2s;
+.modal-content {
+  @apply bg-white rounded-lg shadow-xl w-full max-h-[90vh] overflow-y-auto;
 }
 
-.user-card-item:hover {
-  transform: translateY(-5px);
+.modal-header {
+  @apply flex items-center justify-between p-4 border-b;
 }
 
-.user-card-image {
-  height: 180px;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #f8f9fa;
+.modal-body {
+  @apply p-4;
 }
 
-.user-card-image img {
-  max-height: 100%;
-  object-fit: contain;
+.modal-footer {
+  @apply flex justify-end gap-2 p-4 border-t bg-gray-50;
 }
 
-.activity-timeline {
-  position: relative;
-  padding-left: 30px;
-}
-
-.activity-timeline::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 11px;
-  width: 2px;
-  background-color: #e9ecef;
-}
-
-.activity-item {
-  position: relative;
-  padding-bottom: 20px;
-}
-
-.activity-icon {
-  position: absolute;
-  left: -30px;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background-color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1;
-}
-
-.activity-content {
-  background-color: #f8f9fa;
-  border-radius: 0.375rem;
-  padding: 12px 15px;
-}
-
-.bg-info {
-  background-color: #673AB7 !important;
-  color: white;
-}
-
-.bg-warning {
-  background-color: #FF9800 !important;
+.modal-close {
+  @apply p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100 transition-colors;
 }
 
 .btn-primary {
-  background-color: #FF5722;
-  border-color: #FF5722;
+  @apply px-4 py-2 bg-primary text-white rounded hover:bg-primary-dark transition-colors disabled:opacity-50;
 }
 
-.btn-primary:hover, .btn-primary:focus {
-  background-color: #E64A19;
-  border-color: #E64A19;
+.btn-secondary {
+  @apply px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors;
+}
+
+.form-control {
+  @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 
+         focus:ring-orange-500 focus:border-orange-500 transition-all;
+}
+
+.form-select {
+  @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 
+         focus:ring-orange-500 focus:border-orange-500 transition-all;
+}
+
+.role-admin {
+  @apply bg-purple-100 text-purple-800;
+}
+
+.role-premium {
+  @apply bg-yellow-100 text-yellow-800;
+}
+
+.role-user {
+  @apply bg-blue-100 text-blue-800;
+}
+
+.btn-action {
+  @apply p-2 rounded-full transition-colors duration-200;
+}
+
+.btn-view {
+  @apply text-blue-600 hover:bg-blue-50 hover:text-blue-700;
+}
+
+.btn-edit {
+  @apply text-orange-600 hover:bg-orange-50 hover:text-orange-700;
+}
+
+.btn-success {
+  @apply text-green-600 hover:bg-green-50 hover:text-green-700;
+}
+
+.btn-danger {
+  @apply text-red-600 hover:bg-red-50 hover:text-red-700;
 }
 </style>
