@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore'
 import { compressAndConvertToBase64 } from '../utils/storage'
 import users from './modules/users'
+import auth from './modules/auth'
 
 export default createStore({
   state: {
@@ -186,48 +187,34 @@ export default createStore({
     },
     
     // Actualizar carta existente
-    async updateCard({ commit }, { cardId, cardData }) {
+    async updateCard({ commit }, { id, cardData }) {
       commit('SET_LOADING', true);
       commit('SET_ERROR', null);
       try {
-        // Si hay una imagen para subir
-        if (cardData.imageFile) {
-          try {
-            // Convertir imagen a base64 con compresión
-            const base64Image = await compressAndConvertToBase64(
-              cardData.imageFile, 
-              800,  // Ancho máximo en píxeles
-              0.7   // Calidad (0-1)
-            );
-            
-            // Guardar la imagen como string base64 en lugar de URL
-            cardData.imageUrl = base64Image;
-            
-            // Eliminar el archivo de la data que se enviará a Firestore
-            delete cardData.imageFile;
-            
-            console.log('✅ Imagen convertida a base64 correctamente');
-          } catch (error) {
-            console.error('❌ Error al procesar imagen:', error);
-            throw new Error(`Error al procesar la imagen: ${error.message || 'Error desconocido'}`);
-          }
+        const db = getFirestore();
+        const cardRef = doc(db, 'cards', id);
+        
+        // Preparar los datos para actualizar
+        const updateData = { ...cardData };
+        
+        // Asegurarse de que categories sea un array
+        if (!Array.isArray(updateData.categories)) {
+          updateData.categories = [];
         }
         
-        const db = getFirestore();
-        const cardRef = doc(db, 'cards', cardId);
-        await updateDoc(cardRef, cardData);
+        // Eliminar propiedades que no deben actualizarse
+        delete updateData.id;
+        delete updateData.imageFile;
         
-        const updatedCard = {
-          id: cardId,
-          ...cardData
-        };
+        await updateDoc(cardRef, updateData);
         
-        commit('UPDATE_CARD', updatedCard);
-        return updatedCard;
+        // Actualizar la carta en el estado
+        commit('UPDATE_CARD', { id, ...updateData });
+        return true;
       } catch (error) {
         console.error('Error al actualizar carta:', error);
         commit('SET_ERROR', 'Error al actualizar la carta. Por favor, inténtalo de nuevo.');
-        return null;
+        return false;
       } finally {
         commit('SET_LOADING', false);
       }
@@ -594,11 +581,6 @@ export default createStore({
           throw new Error('No hay conexión a Internet. La aplicación funcionará en modo offline con datos limitados.')
         }
         
-        // Establecer un timeout para las operaciones de Firestore
-        const timeout = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Tiempo de espera agotado al conectar con Firestore')), 15000)
-        )
-        
         // Contar usuarios
         const usersRef = collection(db, 'users')
         const usersSnapshot = await getDocs(usersRef)
@@ -693,6 +675,7 @@ export default createStore({
     }
   },
   modules: {
+    auth,
     users
   }
 })

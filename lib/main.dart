@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'services/auth_service.dart';
@@ -10,7 +9,6 @@ import 'providers/collection_provider.dart';
 import 'providers/pack_provider.dart';
 import 'screens/splash_screen.dart';
 import 'screens/user_sales_screen.dart';
-import 'utils/audio_service.dart';
 import 'providers/music_provider.dart';
 
 void main() async {

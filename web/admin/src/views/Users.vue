@@ -171,35 +171,35 @@
               
                 <td class="px-6 py-4 text-right">
                   <div class="flex justify-end space-x-2">
-                  <button 
+                    <button 
                       class="btn-action btn-view"
-                    @click="viewUserDetails(user.id)"
-                    title="Ver detalles"
-                  >
-                    <i class="fas fa-eye"></i>
-                  </button>
-                  
-                  <button 
+                      @click="viewUserDetails(user.id)"
+                      title="Ver detalles"
+                    >
+                      <i class="fas fa-eye"></i>
+                    </button>
+                    
+                    <button 
                       class="btn-action btn-edit"
-                    @click="editUserRole(user)"
-                    title="Cambiar rol"
-                  >
-                    <i class="fas fa-user-tag"></i>
-                  </button>
-                  
-                  <button 
+                      @click="editUserRole(user)"
+                      title="Cambiar rol"
+                    >
+                      <i class="fas fa-user-tag"></i>
+                    </button>
+                    
+                    <button 
                       class="btn-action"
                       :class="user.disabled ? 'btn-success' : 'btn-danger'"
-                    @click="toggleUserStatus(user)"
-                    :title="user.disabled ? 'Activar cuenta' : 'Bloquear cuenta'"
-                  >
-                    <i :class="user.disabled ? 'fas fa-user-check' : 'fas fa-user-slash'"></i>
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                      @click="toggleUserStatus(user)"
+                      :title="user.disabled ? 'Activar cuenta' : 'Bloquear cuenta'"
+                    >
+                      <i :class="user.disabled ? 'fas fa-user-check' : 'fas fa-user-slash'"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -461,27 +461,15 @@ export default {
     // Cargar usuarios
     const loadUsers = async () => {
       loading.value = true;
+      error.value = null;
       
       try {
-        // Llamar a la acción fetchUsers sin esperar un retorno
-        await store.dispatch('fetchUsers');
-        
-        // Obtener los usuarios directamente del estado
-        users.value = store.state.users;
-        totalUsers.value = store.state.users.length;
-        
-        // Si no hay datos, inicializar con valores seguros
-        if (!users.value || !Array.isArray(users.value)) {
-          console.warn('No se recibieron datos de usuarios en el formato esperado');
-          users.value = [];
-          totalUsers.value = 0;
-        }
+        await store.dispatch('users/fetchUsers');
+        users.value = store.getters['users/getUsers'];
+        totalUsers.value = users.value.length;
       } catch (err) {
         console.error('Error al cargar usuarios:', err);
-        store.commit('SET_ERROR', 'Error al cargar la lista de usuarios');
-        // En caso de error, inicializar con valores seguros
-        users.value = [];
-        totalUsers.value = 0;
+        error.value = store.getters['users/getError'] || 'Error al cargar la lista de usuarios';
       } finally {
         loading.value = false;
       }
@@ -582,33 +570,21 @@ export default {
     // Ver detalles de usuario
     const viewUserDetails = async (userId) => {
       userDetailsLoading.value = true;
-      error.value = null;
+      showUserDetailsModal.value = true;
       
       try {
-        // Cargar detalles completos del usuario
-        const userData = await store.dispatch('users/fetchUserDetails', userId);
-        if (!userData) {
-          throw new Error('No se pudieron cargar los datos del usuario');
-        }
-        userDetails.value = {
-          ...userData,
-          stats: userData.stats || {
-            cardsCount: 0,
-            packsOpened: 0
-          }
-        };
-
-        // Mostrar el modal después de cargar los datos básicos
-        showUserDetailsModal.value = true;
+        // Cargar detalles del usuario
+        const user = await store.dispatch('users/fetchUserDetails', userId);
+        userDetails.value = user;
         
-        // Cargar datos adicionales
+        // Cargar cartas y actividad en paralelo
         const [cards, activity] = await Promise.all([
           store.dispatch('users/fetchUserCards', userId),
           store.dispatch('users/fetchUserActivity', userId)
         ]);
         
-        userCards.value = cards || [];
-        userActivity.value = activity || [];
+        userCards.value = cards;
+        userActivity.value = activity;
         
         // Actualizar estadísticas si es necesario
         if (cards && !userDetails.value.stats?.cardsCount) {
@@ -620,11 +596,9 @@ export default {
             }
           };
         }
-        
       } catch (err) {
         console.error('Error al cargar detalles del usuario:', err);
-        error.value = 'Error al cargar los detalles del usuario: ' + err.message;
-        showUserDetailsModal.value = false;
+        error.value = store.getters['users/getError'] || 'Error al cargar los detalles del usuario';
       } finally {
         userDetailsLoading.value = false;
       }
@@ -884,22 +858,23 @@ export default {
 }
 
 .btn-action {
-  @apply p-2 rounded-full transition-colors duration-200;
+  @apply p-2 rounded-full transition-all duration-200 flex items-center justify-center 
+         w-8 h-8 text-sm border border-transparent hover:border-current;
 }
 
 .btn-view {
-  @apply text-blue-600 hover:bg-blue-50 hover:text-blue-700;
+  @apply bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700;
 }
 
 .btn-edit {
-  @apply text-orange-600 hover:bg-orange-50 hover:text-orange-700;
+  @apply bg-orange-50 text-orange-600 hover:bg-orange-100 hover:text-orange-700;
 }
 
 .btn-success {
-  @apply text-green-600 hover:bg-green-50 hover:text-green-700;
+  @apply bg-green-50 text-green-600 hover:bg-green-100 hover:text-green-700;
 }
 
 .btn-danger {
-  @apply text-red-600 hover:bg-red-50 hover:text-red-700;
+  @apply bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700;
 }
 </style>

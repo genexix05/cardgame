@@ -1,63 +1,118 @@
 <template>
-  <div class="login-container d-flex justify-content-center align-items-center">
-    <div class="login-card card">
-      <div class="card-body p-5">
-        <div class="text-center mb-5">
-          <div class="icon-container mb-3" style="background-color: rgba(79, 70, 229, 0.1); width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
-            <i class="fas fa-dragon" style="font-size: 40px; color: var(--primary);"></i>
-          </div>
-          <h2 class="fw-bold">Panel de Administración</h2>
-          <p class="text-muted">Dragon Ball Card Game</p>
-        </div>
+  <div class="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-4">
+    <div class="w-full max-w-md">
+      <!-- Logo y título -->
+      <div class="text-center mb-8">
+        <img 
+          src="../assets/logo.png" 
+          alt="Logo" 
+          class="h-16 mx-auto mb-4"
+          @error="$event.target.src = '/assets/logo-placeholder.png'"
+        >
+        <h1 class="text-3xl font-bold text-white mb-2">Panel de Administración</h1>
+        <p class="text-gray-400">Inicia sesión para acceder al panel</p>
+      </div>
 
-        <form @submit.prevent="login">
-          <div class="mb-4">
-            <label for="email" class="form-label">Correo electrónico</label>
-            <div class="input-group">
-              <span class="input-group-text" style="background-color: transparent;">
-                <i class="fas fa-envelope text-muted"></i>
-              </span>
-              <input
-                type="email"
-                class="form-control ps-2"
-                id="email"
-                v-model="email"
-                placeholder="admin@example.com"
-                required
-              />
+      <!-- Formulario de login -->
+      <div class="bg-white rounded-xl shadow-2xl p-8">
+        <form @submit.prevent="login" class="space-y-6">
+          <!-- Mensaje de error -->
+          <div v-if="error" class="bg-red-50 border-l-4 border-red-500 p-4 rounded">
+            <div class="flex">
+              <div class="flex-shrink-0">
+                <i class="fas fa-exclamation-circle text-red-500"></i>
+              </div>
+              <div class="ml-3">
+                <p class="text-sm text-red-700">{{ error }}</p>
+              </div>
             </div>
           </div>
-          <div class="mb-5">
-            <label for="password" class="form-label">Contraseña</label>
-            <div class="input-group">
-              <span class="input-group-text" style="background-color: transparent;">
-                <i class="fas fa-lock text-muted"></i>
-              </span>
+
+          <!-- Email -->
+          <div>
+            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">
+              Correo electrónico
+            </label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i class="fas fa-envelope text-gray-400"></i>
+              </div>
               <input
-                type="password"
-                class="form-control ps-2"
+                id="email"
+                type="email"
+                v-model="email"
+                class="form-input pl-10"
+                placeholder="tu@email.com"
+                required
+                :disabled="loading"
+              >
+            </div>
+          </div>
+
+          <!-- Contraseña -->
+          <div>
+            <label for="password" class="block text-sm font-medium text-gray-700 mb-1">
+              Contraseña
+            </label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i class="fas fa-lock text-gray-400"></i>
+              </div>
+              <input
                 id="password"
+                type="password"
                 v-model="password"
+                class="form-input pl-10"
                 placeholder="••••••••"
                 required
-              />
+                :disabled="loading"
+              >
+              <button
+                type="button"
+                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500"
+                @click="togglePasswordVisibility"
+              >
+                <i :class="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+              </button>
             </div>
           </div>
-          <div class="d-grid">
-            <button 
-              type="submit" 
-              class="btn btn-primary btn-lg py-3" 
-              :disabled="loading"
-            >
-              <span v-if="loading" class="spinner-border spinner-border-sm me-2" role="status"></span>
-              Iniciar sesión
-            </button>
-          </div>
-        </form>
 
-        <div class="alert alert-danger mt-3" v-if="error">
-          {{ error }}
-        </div>
+          <!-- Recordar sesión -->
+          <div class="flex items-center justify-between">
+            <div class="flex items-center">
+              <input
+                id="remember"
+                type="checkbox"
+                v-model="rememberMe"
+                class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                :disabled="loading"
+              >
+              <label for="remember" class="ml-2 block text-sm text-gray-700">
+                Recordar sesión
+              </label>
+            </div>
+            <a href="#" class="text-sm text-primary hover:text-primary-dark">
+              ¿Olvidaste tu contraseña?
+            </a>
+          </div>
+
+          <!-- Botón de login -->
+          <button
+            type="submit"
+            class="btn-login w-full"
+            :disabled="loading"
+          >
+            <span v-if="loading" class="animate-spin mr-2">⌛</span>
+            {{ loading ? 'Iniciando sesión...' : 'Iniciar sesión' }}
+          </button>
+        </form>
+      </div>
+
+      <!-- Footer -->
+      <div class="mt-8 text-center">
+        <p class="text-gray-400 text-sm">
+          © {{ new Date().getFullYear() }} Card Game. Todos los derechos reservados.
+        </p>
       </div>
     </div>
   </div>
@@ -65,78 +120,98 @@
 
 <script>
 import { ref } from 'vue';
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+import { useStore } from 'vuex';
 import { useRouter } from 'vue-router';
 
 export default {
   name: 'LoginView',
   setup() {
+    const store = useStore();
+    const router = useRouter();
+    
     const email = ref('');
     const password = ref('');
-    const error = ref('');
+    const rememberMe = ref(false);
     const loading = ref(false);
-    const router = useRouter();
-
+    const error = ref(null);
+    const showPassword = ref(false);
+    
+    const togglePasswordVisibility = () => {
+      showPassword.value = !showPassword.value;
+      const passwordInput = document.getElementById('password');
+      if (passwordInput) {
+        passwordInput.type = showPassword.value ? 'text' : 'password';
+      }
+    };
+    
     const login = async () => {
+      if (!email.value || !password.value) {
+        error.value = 'Por favor, completa todos los campos';
+        return;
+      }
+      
       loading.value = true;
-      error.value = '';
+      error.value = null;
       
       try {
-        const auth = getAuth();
-        await signInWithEmailAndPassword(auth, email.value, password.value);
-        router.push('/dashboard');
-      } catch (e) {
-        console.error('Error de inicio de sesión:', e);
+        await store.dispatch('auth/login', {
+          email: email.value,
+          password: password.value,
+          remember: rememberMe.value
+        });
         
-        // Mensajes de error personalizados
-        if (e.code === 'auth/invalid-credential') {
-          error.value = 'Credenciales inválidas. Verifica tu correo y contraseña.';
-        } else if (e.code === 'auth/user-not-found') {
-          error.value = 'Usuario no encontrado. Verifica tu correo electrónico.';
-        } else if (e.code === 'auth/wrong-password') {
-          error.value = 'Contraseña incorrecta. Inténtalo de nuevo.';
-        } else {
-          error.value = 'Error al iniciar sesión. Por favor, inténtalo de nuevo.';
-        }
+        const redirect = router.currentRoute.value.query.redirect || '/';
+        router.push(redirect);
+      } catch (err) {
+        console.error('Error al iniciar sesión:', err);
+        error.value = err.message || 'Error al iniciar sesión. Por favor, intenta nuevamente.';
       } finally {
         loading.value = false;
       }
     };
-
+    
     return {
       email,
       password,
-      login,
+      rememberMe,
+      loading,
       error,
-      loading
+      showPassword,
+      login,
+      togglePasswordVisibility
     };
   }
 };
 </script>
 
 <style scoped>
-.login-container {
-  min-height: 100vh;
-  background-color: #f5f5f5;
+.form-input {
+  @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 
+         focus:ring-primary focus:border-primary transition-all;
 }
 
-.login-card {
-  width: 100%;
-  max-width: 420px;
-  border-radius: 1rem;
+.btn-login {
+  @apply px-4 py-3 bg-gradient-to-r from-primary to-primary-dark text-white 
+         rounded-lg font-medium hover:from-primary-dark hover:to-primary 
+         transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed
+         flex items-center justify-center;
 }
 
-.text-primary {
-  color: #FF5722 !important;
+/* Animación de fondo */
+.bg-gradient-to-br {
+  background-size: 400% 400%;
+  animation: gradient 15s ease infinite;
 }
 
-.btn-primary {
-  background-color: #FF5722;
-  border-color: #FF5722;
-}
-
-.btn-primary:hover, .btn-primary:focus {
-  background-color: #E64A19;
-  border-color: #E64A19;
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
 </style>

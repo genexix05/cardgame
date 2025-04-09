@@ -20,23 +20,23 @@ class CollectionTab extends StatefulWidget {
 class _CollectionTabState extends State<CollectionTab>
     with AutomaticKeepAliveClientMixin {
   final FirestoreService _firestoreService = FirestoreService();
-  bool _isLoading = false;
-  List<Map<String, dynamic>> _userCards = [];
-  List<model.Card> _cards = [];
-  List<model.Card> _filteredCards = [];
-  List<model.Card> _favouriteCards = [];
-  Map<String, dynamic> _userCardMap = {};
+  final bool _isLoading = false;
+  final List<Map<String, dynamic>> _userCards = [];
+  final List<model.Card> _cards = [];
+  final List<model.Card> _filteredCards = [];
+  final List<model.Card> _favouriteCards = [];
+  final Map<String, dynamic> _userCardMap = {};
   String? _errorMessage;
 
   // Filtros
   String _searchQuery = '';
-  List<String> _seriesFilter = [];
-  List<model.CardRarity> _rarityFilter = [];
-  List<model.CardType> _typeFilter = [];
-  bool _onlyFavourites = false;
+  final List<String> _seriesFilter = [];
+  final List<model.CardRarity> _rarityFilter = [];
+  final List<model.CardType> _typeFilter = [];
+  final bool _onlyFavourites = false;
 
   // Para la lista desplegable de series
-  List<String> _availableSeries = [];
+  final List<String> _availableSeries = [];
 
   // Método para construir la imagen de la carta (maneja URL y base64)
   Widget _buildCardImage(String imageUrl) {
@@ -358,7 +358,7 @@ class _CollectionTabState extends State<CollectionTab>
                   ),
 
                   // Imagen de la carta
-                  Container(
+                  SizedBox(
                     height: 250,
                     width: double.infinity,
                     child: _buildCardImage(card.imageUrl),
@@ -932,9 +932,9 @@ class CardSearchDelegate extends SearchDelegate<model.Card?> {
 
     final filteredCards = cards.where((card) {
       final cardDetail = card['cardDetail'] as model.Card;
-      return cardDetail.name.toLowerCase().contains(query!.toLowerCase()) ||
-          cardDetail.description.toLowerCase().contains(query!.toLowerCase()) ||
-          cardDetail.series.toLowerCase().contains(query!.toLowerCase());
+      return cardDetail.name.toLowerCase().contains(query.toLowerCase()) ||
+          cardDetail.description.toLowerCase().contains(query.toLowerCase()) ||
+          cardDetail.series.toLowerCase().contains(query.toLowerCase());
     }).toList();
 
     if (filteredCards.isEmpty) {
@@ -989,7 +989,7 @@ class CardSearchDelegate extends SearchDelegate<model.Card?> {
                           ),
 
                           // Imagen de la carta
-                          Container(
+                          SizedBox(
                             height: 250,
                             width: double.infinity,
                             child: _buildCardImage(card.imageUrl),

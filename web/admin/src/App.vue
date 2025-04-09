@@ -26,7 +26,7 @@
         <div class="flex-1 overflow-y-auto py-4">
           <ul class="space-y-2 px-2">
             <li>
-              <router-link class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-gray-800 hover:text-white transition-all" 
+              <router-link class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-orange-500/50 hover:text-white transition-all" 
                 :class="{ 'justify-center': sidebarCollapsed, 'bg-gradient-to-r from-orange-500/20 to-orange-500/10 text-white': $route.path === '/dashboard' }" 
                 to="/dashboard" 
                 :title="sidebarCollapsed ? 'Dashboard' : ''">
@@ -35,7 +35,7 @@
               </router-link>
             </li>
             <li>
-              <router-link class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-gray-800 hover:text-white transition-all" 
+              <router-link class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-orange-500/50 hover:text-white transition-all" 
                 :class="{ 'justify-center': sidebarCollapsed, 'bg-gradient-to-r from-orange-500/20 to-orange-500/10 text-white': $route.path.includes('/cards') }" 
                 to="/cards" 
                 :title="sidebarCollapsed ? 'Cartas' : ''">
@@ -44,7 +44,7 @@
               </router-link>
             </li>
             <li>
-              <router-link class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-gray-800 hover:text-white transition-all" 
+              <router-link class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-orange-500/50 hover:text-white transition-all" 
                 :class="{ 'justify-center': sidebarCollapsed, 'bg-gradient-to-r from-orange-500/20 to-orange-500/10 text-white': $route.path.includes('/packs') }" 
                 to="/packs" 
                 :title="sidebarCollapsed ? 'Sobres' : ''">
@@ -53,12 +53,21 @@
               </router-link>
             </li>
             <li>
-              <router-link class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-gray-800 hover:text-white transition-all" 
+              <router-link class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-orange-500/50 hover:text-white transition-all" 
                 :class="{ 'justify-center': sidebarCollapsed, 'bg-gradient-to-r from-orange-500/20 to-orange-500/10 text-white': $route.path.includes('/users') }" 
                 to="/users" 
                 :title="sidebarCollapsed ? 'Usuarios' : ''">
                 <i class="fas fa-users"></i>
                 <span v-if="!sidebarCollapsed" class="ml-3">Usuarios</span>
+              </router-link>
+            </li>
+            <li >
+              <router-link class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-orange-500/50 hover:text-white transition-all" 
+                :class="{ 'justify-center': sidebarCollapsed, 'bg-gradient-to-r from-orange-500/20 to-orange-500/10 text-white': $route.path.includes('/categories') }" 
+                to="/categories" 
+                :title="sidebarCollapsed ? 'Categorias' : ''">               
+                <i class="fas fa-tags"></i>
+                <span v-if="!sidebarCollapsed" class="ml-3">Categorias</span>
               </router-link>
             </li>
           </ul>

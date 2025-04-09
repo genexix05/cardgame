@@ -86,7 +86,7 @@
           <div class="relative">
             <img :src="prepareImageUrl(card.imageUrl)" class="w-full h-48 object-cover rounded-t-lg" :alt="card.name">
             <div class="absolute top-2 right-2">
-              <span class="badge" :class="'rarity-' + card.rarity">
+              <span class="badge" :class="getRarityBadgeClass(card.rarity)">
                 {{ getRarityText(card.rarity) }}
               </span>
             </div>
@@ -100,20 +100,38 @@
             
             <p class="text-sm text-gray-600 mb-4">{{ card.description }}</p>
             
+            <div class="flex flex-wrap gap-2 mb-4">
+              <span v-for="categoryId in (card.categories || [])" :key="categoryId" class="badge bg-info">
+                {{ getCategoryName(categoryId) }}
+              </span>
+            </div>
+            
             <div class="flex items-center space-x-4 text-sm text-gray-500">
-              <div class="flex items-center">
-                <i class="fas fa-bolt text-yellow-500 mr-1"></i>
-                <span>{{ card.power }}</span>
-              </div>
               <div class="flex items-center">
                 <i class="fas fa-tag text-blue-500 mr-1"></i>
                 <span>{{ card.series }}</span>
               </div>
             </div>
+
+            <!-- Atributos de personaje -->
+            <div v-if="card.type === 'character'" class="flex items-center space-x-4 text-sm text-gray-500 mt-2">
+              <div class="flex items-center">
+                <i class="fas fa-heart text-red-500 mr-1"></i>
+                <span>{{ card.health }}</span>
+              </div>
+              <div class="flex items-center">
+                <i class="fas fa-fist-raised text-orange-500 mr-1"></i>
+                <span>{{ card.attack }}</span>
+              </div>
+              <div class="flex items-center">
+                <i class="fas fa-shield-alt text-blue-500 mr-1"></i>
+                <span>{{ card.defense }}</span>
+              </div>
+            </div>
           </div>
           
           <div class="px-4 py-3 bg-gray-50 rounded-b-lg flex justify-between">
-            <router-link :to="'/cards/' + card.id" class="btn-outline-primary">
+            <router-link :to="'/cards/edit/' + card.id" class="btn-outline-primary">
               <i class="fas fa-edit mr-1"></i>Editar
             </router-link>
             <button class="btn-outline-danger" @click="confirmDelete(card)">
@@ -155,6 +173,8 @@
 import { ref, computed, onMounted } from 'vue';
 import { useStore } from 'vuex';
 import { prepareImageUrl } from '../utils/storage';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../firebase';
 
 export default {
   name: 'CardsView',
@@ -175,12 +195,45 @@ export default {
     const selectedCard = ref(null);
     const isDeleting = ref(false);
     
+    const categories = ref([]);
+
+    const loadCategories = async () => {
+      try {
+        const categoriesRef = collection(db, 'categories');
+        const querySnapshot = await getDocs(categoriesRef);
+        
+        categories.value = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+      } catch (err) {
+        console.error('Error al cargar categorías:', err);
+      }
+    };
+
+    const getCategoryName = (categoryId) => {
+      const category = categories.value.find(c => c.id === categoryId);
+      return category ? category.name : 'Categoría desconocida';
+    };
+    
     const loadCards = async () => {
       await store.dispatch('fetchCards');
     };
     
+    const getRarityBadgeClass = (rarity) => {
+      switch (rarity) {
+        case 'common': return 'rarity-common';
+        case 'uncommon': return 'rarity-uncommon';
+        case 'rare': return 'rarity-rare';
+        case 'superRare': return 'rarity-superRare';
+        case 'ultraRare': return 'rarity-ultraRare';
+        case 'legendary': return 'rarity-legendary';
+        default: return 'rarity-common';
+      }
+    };
+
     const filteredCards = computed(() => {
-      let result = [...cards.value];
+      let result = [...(cards.value || [])];
       
       // Aplicar búsqueda
       if (search.value) {
@@ -273,6 +326,7 @@ export default {
     };
     
     onMounted(() => {
+      loadCategories();
       loadCards();
     });
     
@@ -291,9 +345,11 @@ export default {
       loadCards,
       getRarityText,
       getTypeText,
+      getRarityBadgeClass,
       confirmDelete,
       deleteCard,
-      prepareImageUrl
+      prepareImageUrl,
+      getCategoryName
     };
   }
 };

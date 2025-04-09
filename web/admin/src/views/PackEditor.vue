@@ -1,353 +1,374 @@
 <template>
-  <div class="pack-edit-view">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <h1>{{ isEditMode ? 'Editar Sobre' : 'Nuevo Sobre' }}</h1>
-      <router-link to="/packs" class="btn btn-outline-secondary">
-        <i class="fas fa-arrow-left me-2"></i>Volver
+  <div class="pack-edit-view p-6">
+    <!-- Encabezado -->
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-800">{{ isEditMode ? 'Editar Sobre' : 'Nuevo Sobre' }}</h1>
+        <p class="text-gray-600 mt-1">Completa la información del sobre</p>
+      </div>
+      <router-link to="/packs" class="btn-outline-secondary">
+        <i class="fas fa-arrow-left mr-2"></i>Volver
       </router-link>
     </div>
     
-    <div v-if="loading && !isSubmitting" class="text-center py-5">
-      <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Cargando...</span>
+    <!-- Cargando -->
+    <div v-if="loading && !isSubmitting" class="flex justify-center items-center py-12">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+    </div>
+    
+    <!-- Error -->
+    <div v-else-if="error && !submitError" class="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
+      <div class="flex">
+        <div class="flex-shrink-0">
+          <i class="fas fa-exclamation-circle text-red-400"></i>
+        </div>
+        <div class="ml-3">
+          <p class="text-sm text-red-700">{{ error }}</p>
+        </div>
+        <div class="ml-auto pl-3" v-if="isEditMode">
+          <button class="btn-outline-danger" @click="loadPack">Reintentar</button>
+        </div>
       </div>
     </div>
-    <div v-else-if="error && !submitError" class="alert alert-danger">
-      {{ error }}
-      <button v-if="isEditMode" class="btn btn-sm btn-outline-danger ms-3" @click="loadPack">Reintentar</button>
-    </div>
-    <div v-else>
-      <form @submit.prevent="savePack" class="needs-validation" novalidate>
-        <div class="row">
-          <!-- Columna izquierda - Imagen y previsualización -->
-          <div class="col-md-4 mb-4">
-            <div class="card shadow-sm">
-              <div class="card-body">
-                <h5 class="card-title mb-3">Imagen del Sobre</h5>
-                
-                <div class="pack-preview mb-3">
-                  <div v-if="previewUrl" class="preview-container mb-3">
-                    <img :src="previewUrl" alt="Vista previa" class="img-fluid rounded">
-                  </div>
-                  <div v-else-if="packData.imageUrl" class="preview-container mb-3">
-                    <img :src="prepareImageUrl(packData.imageUrl)" alt="Imagen actual" class="img-fluid rounded">
-                  </div>
-                  <div v-else class="no-image-container mb-3 d-flex justify-content-center align-items-center bg-light rounded">
-                    <i class="fas fa-image text-secondary" style="font-size: 3rem;"></i>
-                  </div>
-                </div>
-                
-                <div class="mb-3">
-                  <label for="packImage" class="form-label">Seleccionar imagen</label>
-                  <input 
-                    type="file" 
-                    class="form-control" 
-                    id="packImage" 
-                    accept="image/*" 
-                    @change="handleImageChange"
-                  >
-                  <div class="form-text">Formatos recomendados: JPG, PNG. Tamaño máximo: 2MB.</div>
-                </div>
-                
-                <div class="pack-preview-details mt-4">
-                  <div class="price-preview p-3 bg-light rounded mb-3 text-center">
-                    <h3 class="mb-0">{{ packData.price || 0 }} <i class="fas fa-coins text-warning"></i></h3>
-                    <div class="text-muted small">Precio del sobre</div>
-                  </div>
-                  
-                  <div class="card-count-preview p-3 bg-light rounded text-center">
-                    <h3 class="mb-0">{{ packData.cardCount || 0 }}</h3>
-                    <div class="text-muted small">Cartas por sobre</div>
-                  </div>
-                </div>
-              </div>
+    
+    <!-- Formulario -->
+    <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Columna izquierda - Imagen y previsualización -->
+      <div class="lg:col-span-1">
+        <div class="bg-white rounded-lg shadow-sm p-6">
+          <h3 class="text-lg font-semibold text-gray-800 mb-4">Imagen del Sobre</h3>
+          
+          <div class="pack-preview mb-4">
+            <div v-if="previewUrl" class="preview-container">
+              <img :src="previewUrl" alt="Vista previa" class="w-full h-64 object-cover rounded-lg">
+            </div>
+            <div v-else-if="packData.imageUrl" class="preview-container">
+              <img :src="prepareImageUrl(packData.imageUrl)" alt="Imagen actual" class="w-full h-64 object-cover rounded-lg">
+            </div>
+            <div v-else class="no-image-container h-64 flex items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+              <i class="fas fa-image text-gray-400 text-4xl"></i>
             </div>
           </div>
           
-          <!-- Columna derecha - Formulario -->
-          <div class="col-md-8">
-            <div class="card shadow-sm">
-              <div class="card-body">
-                <h5 class="card-title mb-3">Información del Sobre</h5>
-                
-                <div class="row g-3">
-                  <!-- Nombre -->
-                  <div class="col-md-6">
-                    <label for="packName" class="form-label">Nombre *</label>
-                    <input 
-                      type="text" 
-                      class="form-control" 
-                      id="packName" 
-                      v-model="packData.name" 
-                      required
-                      :class="{'is-invalid': formErrors.name}"
-                    >
-                    <div class="invalid-feedback" v-if="formErrors.name">
-                      {{ formErrors.name }}
-                    </div>
+          <div class="mb-4">
+            <label for="packImage" class="block text-sm font-medium text-gray-700 mb-1">Seleccionar imagen</label>
+            <input 
+              type="file" 
+              class="form-control" 
+              id="packImage" 
+              accept="image/*" 
+              @change="handleImageChange"
+            >
+            <p class="text-xs text-gray-500 mt-1">Formatos recomendados: JPG, PNG. Tamaño máximo: 2MB.</p>
+          </div>
+          
+          <div class="space-y-4">
+            <div class="bg-gray-50 rounded-lg p-4 text-center">
+              <h3 class="text-2xl font-bold text-gray-800 mb-1">{{ packData.price || 0 }}</h3>
+              <div class="text-sm text-gray-600">Precio del sobre</div>
+            </div>
+            
+            <div class="bg-gray-50 rounded-lg p-4 text-center">
+              <h3 class="text-2xl font-bold text-gray-800 mb-1">{{ packData.cardCount || 0 }}</h3>
+              <div class="text-sm text-gray-600">Cartas por sobre</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Columna derecha - Formulario -->
+      <div class="lg:col-span-2">
+        <div class="bg-white rounded-lg shadow-sm p-6">
+          <h3 class="text-lg font-semibold text-gray-800 mb-4">Información del Sobre</h3>
+          
+          <form @submit.prevent="savePack" class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <!-- Nombre -->
+              <div>
+                <label for="packName" class="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  id="packName" 
+                  v-model="packData.name" 
+                  required
+                  :class="{'border-red-500': formErrors.name}"
+                >
+                <p v-if="formErrors.name" class="text-sm text-red-500 mt-1">{{ formErrors.name }}</p>
+              </div>
+              
+              <!-- Precio -->
+              <div>
+                <label for="packPrice" class="block text-sm font-medium text-gray-700 mb-1">Precio *</label>
+                <div class="relative">
+                  <input 
+                    type="number" 
+                    class="form-control pl-10" 
+                    id="packPrice" 
+                    v-model.number="packData.price" 
+                    min="0" 
+                    required
+                    :class="{'border-red-500': formErrors.price}"
+                  >
+                  <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="fas fa-coins text-yellow-500"></i>
                   </div>
-                  
-                  <!-- Precio -->
-                  <div class="col-md-3">
-                    <label for="packPrice" class="form-label">Precio *</label>
-                    <div class="input-group">
-                      <input 
-                        type="number" 
-                        class="form-control" 
-                        id="packPrice" 
-                        v-model.number="packData.price" 
-                        min="0" 
-                        required
-                        :class="{'is-invalid': formErrors.price}"
-                      >
-                      <span class="input-group-text"><i class="fas fa-coins text-warning"></i></span>
-                      <div class="invalid-feedback" v-if="formErrors.price">
-                        {{ formErrors.price }}
-                      </div>
-                    </div>
+                </div>
+                <p v-if="formErrors.price" class="text-sm text-red-500 mt-1">{{ formErrors.price }}</p>
+              </div>
+              
+              <!-- Cantidad de cartas -->
+              <div>
+                <label for="packCardCount" class="block text-sm font-medium text-gray-700 mb-1">Cartas *</label>
+                <input 
+                  type="number" 
+                  class="form-control" 
+                  id="packCardCount" 
+                  v-model.number="packData.cardCount" 
+                  min="1" 
+                  max="20" 
+                  required
+                  :class="{'border-red-500': formErrors.cardCount}"
+                >
+                <p v-if="formErrors.cardCount" class="text-sm text-red-500 mt-1">{{ formErrors.cardCount }}</p>
+              </div>
+              
+              <!-- Fecha de lanzamiento -->
+              <div>
+                <label for="packReleaseDate" class="block text-sm font-medium text-gray-700 mb-1">Fecha de Lanzamiento *</label>
+                <input 
+                  type="date" 
+                  class="form-control" 
+                  id="packReleaseDate" 
+                  v-model="releaseDateStr" 
+                  required
+                  :class="{'border-red-500': formErrors.releaseDate}"
+                >
+                <p v-if="formErrors.releaseDate" class="text-sm text-red-500 mt-1">{{ formErrors.releaseDate }}</p>
+              </div>
+            </div>
+            
+            <!-- Descripción -->
+            <div>
+              <label for="packDescription" class="block text-sm font-medium text-gray-700 mb-1">Descripción *</label>
+              <textarea 
+                class="form-control" 
+                id="packDescription" 
+                v-model="packData.description" 
+                rows="3" 
+                required
+                :class="{'border-red-500': formErrors.description}"
+              ></textarea>
+              <p v-if="formErrors.description" class="text-sm text-red-500 mt-1">{{ formErrors.description }}</p>
+            </div>
+            
+            <!-- Disponibilidad -->
+            <div>
+              <label class="flex items-center">
+                <input 
+                  type="checkbox" 
+                  class="form-checkbox h-5 w-5 text-primary focus:ring-primary border-gray-300 rounded" 
+                  v-model="packData.available"
+                >
+                <span class="ml-2 text-sm text-gray-700">
+                  {{ packData.available ? 'Disponible para compra' : 'No disponible' }}
+                </span>
+              </label>
+            </div>
+            
+            <!-- Probabilidades de rareza -->
+            <div class="space-y-4">
+              <div class="flex items-center justify-between">
+                <h4 class="text-lg font-medium text-gray-800">Probabilidades de Rareza</h4>
+                <button 
+                  type="button" 
+                  class="btn-outline-secondary text-sm" 
+                  @click="distributeProbabilities"
+                >
+                  Distribuir automáticamente
+                </button>
+              </div>
+              
+              <div class="bg-blue-50 border-l-4 border-blue-400 p-4">
+                <div class="flex">
+                  <div class="flex-shrink-0">
+                    <i class="fas fa-info-circle text-blue-400"></i>
                   </div>
-                  
-                  <!-- Cantidad de cartas -->
-                  <div class="col-md-3">
-                    <label for="packCardCount" class="form-label">Cartas *</label>
+                  <div class="ml-3">
+                    <p class="text-sm text-blue-700">La suma de todas las probabilidades debe ser igual a 100%.</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div v-for="(rarityInfo, index) in rarityList" :key="index">
+                  <label :for="'probability-' + rarityInfo.value" class="block text-sm font-medium text-gray-700 mb-1">
+                    {{ rarityInfo.label }}
+                  </label>
+                  <div class="relative">
                     <input 
                       type="number" 
-                      class="form-control" 
-                      id="packCardCount" 
-                      v-model.number="packData.cardCount" 
-                      min="1" 
-                      max="20" 
-                      required
-                      :class="{'is-invalid': formErrors.cardCount}"
+                      class="form-control pr-10" 
+                      :id="'probability-' + rarityInfo.value" 
+                      v-model.number="probabilities[rarityInfo.value]" 
+                      min="0" 
+                      max="100" 
+                      step="0.1"
+                      @input="validateProbabilities"
+                      :class="{'border-red-500': probabilityError}"
                     >
-                    <div class="invalid-feedback" v-if="formErrors.cardCount">
-                      {{ formErrors.cardCount }}
+                    <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <span class="text-gray-500">%</span>
                     </div>
                   </div>
+                </div>
+              </div>
+              
+              <div class="flex items-center justify-between">
+                <div v-if="probabilityError" class="text-sm text-red-500">
+                  {{ probabilityError }}
+                </div>
+                <div v-else-if="probabilityTotal === 100" class="text-sm text-green-500">
+                  Total: 100% ✓
+                </div>
+                <div v-else class="text-sm text-gray-500">
+                  Total: {{ probabilityTotal.toFixed(1) }}%
+                </div>
+              </div>
+            </div>
+            
+            <!-- Cartas fijas -->
+            <div class="space-y-4">
+              <h4 class="text-lg font-medium text-gray-800">Cartas Fijas</h4>
+              
+              <div v-if="loadingCards" class="flex justify-center py-4">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+              
+              <div v-else>
+                <div class="flex items-center gap-2 mb-4">
+                  <select 
+                    class="form-select flex-1" 
+                    v-model="selectedCardId"
+                  >
+                    <option value="">Seleccionar carta para añadir...</option>
+                    <option v-for="card in availableCards" :key="card.id" :value="card.id">
+                      {{ card.name }} ({{ getRarityText(card.rarity) }})
+                    </option>
+                  </select>
                   
-                  <!-- Descripción -->
-                  <div class="col-12">
-                    <label for="packDescription" class="form-label">Descripción *</label>
-                    <textarea 
-                      class="form-control" 
-                      id="packDescription" 
-                      v-model="packData.description" 
-                      rows="3" 
-                      required
-                      :class="{'is-invalid': formErrors.description}"
-                    ></textarea>
-                    <div class="invalid-feedback" v-if="formErrors.description">
-                      {{ formErrors.description }}
-                    </div>
-                  </div>
-                  
-                  <!-- Fecha de lanzamiento -->
-                  <div class="col-md-6">
-                    <label for="packReleaseDate" class="form-label">Fecha de Lanzamiento *</label>
-                    <input 
-                      type="date" 
-                      class="form-control" 
-                      id="packReleaseDate" 
-                      v-model="releaseDateStr" 
-                      required
-                      :class="{'is-invalid': formErrors.releaseDate}"
-                    >
-                    <div class="invalid-feedback" v-if="formErrors.releaseDate">
-                      {{ formErrors.releaseDate }}
-                    </div>
-                  </div>
-                  
-                  <!-- Disponibilidad -->
-                  <div class="col-md-6">
-                    <label for="packAvailable" class="form-label">Disponibilidad</label>
-                    <div class="form-check form-switch">
-                      <input 
-                        class="form-check-input" 
-                        type="checkbox" 
-                        id="packAvailable" 
-                        v-model="packData.available"
-                      >
-                      <label class="form-check-label" for="packAvailable">
-                        {{ packData.available ? 'Disponible para compra' : 'No disponible' }}
-                      </label>
-                    </div>
-                  </div>
-                  
-                  <!-- Probabilidades de rareza -->
-                  <div class="col-12 mt-4">
-                    <h6 class="mb-3">Probabilidades de Rareza</h6>
-                    <div class="alert alert-info">
-                      <i class="fas fa-info-circle me-2"></i>
-                      La suma de todas las probabilidades debe ser igual a 100%.
-                    </div>
-                    
-                    <div class="row g-3">
-                      <div class="col-md-4" v-for="(rarityInfo, index) in rarityList" :key="index">
-                        <label :for="'probability-' + rarityInfo.value" class="form-label">
-                          {{ rarityInfo.label }}
-                        </label>
-                        <div class="input-group">
-                          <input 
-                            type="number" 
-                            class="form-control" 
-                            :id="'probability-' + rarityInfo.value" 
-                            v-model.number="probabilities[rarityInfo.value]" 
-                            min="0" 
-                            max="100" 
-                            step="0.1"
-                            @input="validateProbabilities"
-                            :class="{'is-invalid': probabilityError}"
-                          >
-                          <span class="input-group-text">%</span>
-                        </div>
+                  <button 
+                    type="button" 
+                    class="btn-outline-primary" 
+                    @click="addFixedCard" 
+                    :disabled="!selectedCardId"
+                  >
+                    <i class="fas fa-plus-circle mr-1"></i>Añadir
+                  </button>
+                </div>
+                
+                <div v-if="fixedCards.length === 0" class="bg-gray-50 rounded-lg p-4 text-center">
+                  <p class="text-gray-600">No hay cartas fijas seleccionadas</p>
+                  <p class="text-sm text-gray-500 mt-1">Al añadir cartas fijas, estas aparecerán siempre en este sobre cuando un usuario lo abra.</p>
+                </div>
+                
+                <div v-else class="space-y-4">
+                  <div class="bg-green-50 border-l-4 border-green-400 p-4">
+                    <div class="flex items-center">
+                      <div class="flex-shrink-0">
+                        <i class="fas fa-info-circle text-green-400"></i>
                       </div>
-                    </div>
-                    
-                    <div class="mt-2 d-flex justify-content-between align-items-center">
-                      <div class="text-danger" v-if="probabilityError">
-                        {{ probabilityError }}
-                      </div>
-                      <div class="text-success" v-else-if="probabilityTotal === 100">
-                        Total: 100% ✓
-                      </div>
-                      <div v-else>
-                        Total: {{ probabilityTotal.toFixed(1) }}%
-                      </div>
-                      
-                      <button 
-                        type="button" 
-                        class="btn btn-sm btn-outline-secondary" 
-                        @click="distributeProbabilities"
-                      >
-                        Distribuir automáticamente
-                      </button>
-                    </div>
-                  </div>
-                  
-                  <!-- Contenido fijo (opcional) -->
-                  <div class="col-12 mt-4">
-                    <h6 class="mb-3">Contenido Fijo <small class="text-muted">(opcional)</small></h6>
-                    <div class="form-text mb-3">
-                      Puedes especificar cartas que se incluirán siempre en este sobre. Esto es útil para sobres temáticos o promocionales.
-                    </div>
-                    
-                    <div class="alert alert-info mb-3">
-                      <i class="fas fa-info-circle me-2"></i>
-                      <strong>¿Cómo funciona?</strong>
-                      <ul class="mb-0 mt-1">
-                        <li>Selecciona una carta del menú desplegable y haz clic en el botón "Añadir Carta".</li>
-                        <li>Puedes añadir tantas cartas fijas como desees.</li>
-                        <li>Las cartas añadidas aparecerán siempre en este sobre cuando un usuario lo abra.</li>
-                        <li>Para guardar los cambios, no olvides hacer clic en "Guardar Sobre" al final del formulario.</li>
-                      </ul>
-                    </div>
-                    
-                    <div v-if="loadingCards" class="text-center py-2">
-                      <div class="spinner-border spinner-border-sm text-primary" role="status">
-                        <span class="visually-hidden">Cargando cartas...</span>
-                      </div>
-                    </div>
-                    <div v-else>
-                      <select 
-                        class="form-select mb-2" 
-                        v-model="selectedCardId"
-                      >
-                        <option value="">Seleccionar carta para añadir...</option>
-                        <option v-for="card in availableCards" :key="card.id" :value="card.id">
-                          {{ card.name }} ({{ getRarityText(card.rarity) }})
-                        </option>
-                      </select>
-                      
-                      <button 
-                        type="button" 
-                        class="btn btn-sm btn-outline-primary mb-3" 
-                        @click="addFixedCard" 
-                        :disabled="!selectedCardId"
-                        id="addCardButton"
-                      >
-                        <i class="fas fa-plus-circle me-1"></i>Añadir Carta
-                      </button>
-                      
-                      <div v-if="fixedCards.length === 0" class="text-center py-3 bg-light rounded">
-                        <p class="text-muted mb-0">No hay cartas fijas seleccionadas</p>
-                        <small class="text-info mt-2 d-block">Al añadir cartas fijas, estas aparecerán siempre en este sobre cuando un usuario lo abra.</small>
-                      </div>
-                      <div v-else class="table-responsive">
-                        <p class="text-info mb-2">
-                          <i class="fas fa-info-circle me-1"></i> 
+                      <div class="ml-3">
+                        <p class="text-sm text-green-700">
                           Este sobre contendrá {{ fixedCards.length }} carta(s) garantizada(s)
-                          <span class="badge bg-success ms-2">{{ fixedCards.length }} carta(s) seleccionada(s)</span>
                         </p>
-                        <table class="table table-sm table-striped">
-                          <thead class="table-light">
-                            <tr>
-                              <th>#</th>
-                              <th>Nombre</th>
-                              <th>Rareza</th>
-                              <th>Tipo</th>
-                              <th>Acciones</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr v-for="(cardId, index) in fixedCards" :key="index">
-                              <td>{{ index + 1 }}</td>
-                              <td>{{ getCardName(cardId) }}</td>
-                              <td>{{ getCardRarity(cardId) }}</td>
-                              <td>{{ getCardType(cardId) }}</td>
-                              <td class="text-end">
-                                <button 
-                                  type="button" 
-                                  class="btn btn-sm btn-outline-danger" 
-                                  @click="removeFixedCard(index)"
-                                  :title="`Eliminar ${getCardName(cardId)}`"
-                                >
-                                  <i class="fas fa-times"></i>
-                                </button>
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
-                        <small class="text-muted">Nota: Si añades más cartas fijas que el número total de cartas del sobre, todas las cartas fijas serán incluidas.</small>
-                        
-                        <div class="alert alert-warning mt-3">
-                          <i class="fas fa-exclamation-triangle me-2"></i>
-                          <strong>¡No olvides guardar!</strong> Haz clic en el botón "Guardar Sobre" al final del formulario para que las cartas fijas se guarden correctamente.
-                        </div>
                       </div>
                     </div>
                   </div>
                   
-                  <!-- Mensaje de error al enviar -->
-                  <div class="col-12">
-                    <div class="alert alert-danger" v-if="submitError">
-                      {{ submitError }}
-                    </div>
+                  <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                      <thead class="bg-gray-50">
+                        <tr>
+                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rareza</th>
+                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                          <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody class="bg-white divide-y divide-gray-200">
+                        <tr v-for="(cardId, index) in fixedCards" :key="index">
+                          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ index + 1 }}</td>
+                          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ getCardName(cardId) }}</td>
+                          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ getCardRarity(cardId) }}</td>
+                          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ getCardType(cardId) }}</td>
+                          <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
+                            <button 
+                              type="button" 
+                              class="btn-outline-danger" 
+                              @click="removeFixedCard(index)"
+                              :title="`Eliminar ${getCardName(cardId)}`"
+                            >
+                              <i class="fas fa-times"></i>
+                            </button>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
                   
-                  <!-- Botones de acción -->
-                  <div class="col-12 d-flex justify-content-end mt-4">
-                    <button 
-                      type="button" 
-                      class="btn btn-outline-secondary me-2" 
-                      @click="resetForm"
-                    >
-                      Cancelar
-                    </button>
-                    <button 
-                      type="submit" 
-                      class="btn btn-primary" 
-                      :disabled="isSubmitting || !!probabilityError"
-                    >
-                      <span v-if="isSubmitting" class="spinner-border spinner-border-sm me-2" role="status"></span>
-                      {{ isEditMode ? 'Guardar Cambios' : 'Crear Sobre' }}
-                    </button>
+                  <p class="text-xs text-gray-500">Nota: Si añades más cartas fijas que el número total de cartas del sobre, todas las cartas fijas serán incluidas.</p>
+                  
+                  <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                    <div class="flex">
+                      <div class="flex-shrink-0">
+                        <i class="fas fa-exclamation-triangle text-yellow-400"></i>
+                      </div>
+                      <div class="ml-3">
+                        <p class="text-sm text-yellow-700">
+                          <strong>¡No olvides guardar!</strong> Haz clic en el botón "Guardar Sobre" al final del formulario para que las cartas fijas se guarden correctamente.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
+            
+            <!-- Error al enviar -->
+            <div v-if="submitError" class="bg-red-50 border-l-4 border-red-400 p-4">
+              <div class="flex">
+                <div class="flex-shrink-0">
+                  <i class="fas fa-exclamation-circle text-red-400"></i>
+                </div>
+                <div class="ml-3">
+                  <p class="text-sm text-red-700">{{ submitError }}</p>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Botones de acción -->
+            <div class="flex justify-end space-x-3 pt-4 border-t">
+              <button 
+                type="button" 
+                class="btn-outline-secondary" 
+                @click="resetForm"
+              >
+                Cancelar
+              </button>
+              <button 
+                type="submit" 
+                class="btn-primary" 
+                :disabled="isSubmitting || !!probabilityError"
+              >
+                <span v-if="isSubmitting" class="animate-spin mr-2">⌛</span>
+                {{ isEditMode ? 'Guardar Cambios' : 'Crear Sobre' }}
+              </button>
+            </div>
+          </form>
         </div>
-      </form>
+      </div>
     </div>
   </div>
 </template>
@@ -1016,55 +1037,54 @@ export default {
 </script>
 
 <style scoped>
+.pack-edit-view {
+  @apply min-h-screen bg-gray-50;
+}
+
 .pack-preview {
-  min-height: 200px;
-  border-radius: 8px;
-  overflow: hidden;
+  @apply rounded-lg overflow-hidden;
 }
 
 .preview-container img {
-  width: 100%;
-  object-fit: cover;
-  max-height: 300px;
+  @apply w-full h-64 object-cover rounded-lg;
 }
 
 .no-image-container {
-  height: 200px;
-  border: 2px dashed #dee2e6;
-}
-
-.text-primary {
-  color: #FF5722 !important;
+  @apply h-64 flex items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300;
 }
 
 .btn-primary {
-  background-color: #FF5722;
-  border-color: #FF5722;
-}
-
-.btn-primary:hover, .btn-primary:focus {
-  background-color: #E64A19;
-  border-color: #E64A19;
+  @apply bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 py-2 rounded-lg 
+         flex items-center hover:from-orange-600 hover:to-orange-700 transition-all 
+         disabled:opacity-50 disabled:cursor-not-allowed;
 }
 
 .btn-outline-primary {
-  color: #FF5722;
-  border-color: #FF5722;
+  @apply border border-orange-500 text-orange-500 px-3 py-1 rounded-lg 
+         flex items-center hover:bg-orange-50 transition-all;
 }
 
-.btn-outline-primary:hover, .btn-outline-primary:focus {
-  background-color: #FF5722;
-  border-color: #FF5722;
-  color: white;
+.btn-outline-secondary {
+  @apply border border-gray-300 text-gray-700 px-3 py-1 rounded-lg 
+         flex items-center hover:bg-gray-50 transition-all;
 }
 
-.form-control:focus, .form-select:focus {
-  border-color: #FF5722;
-  box-shadow: 0 0 0 0.25rem rgba(255, 87, 34, 0.25);
+.btn-outline-danger {
+  @apply border border-red-500 text-red-500 px-3 py-1 rounded-lg 
+         flex items-center hover:bg-red-50 transition-all;
 }
 
-.form-check-input:checked {
-  background-color: #FF5722;
-  border-color: #FF5722;
+.form-control {
+  @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 
+         focus:ring-orange-500 focus:border-orange-500 transition-all;
+}
+
+.form-select {
+  @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 
+         focus:ring-orange-500 focus:border-orange-500 transition-all;
+}
+
+.form-checkbox {
+  @apply h-5 w-5 text-primary focus:ring-primary border-gray-300 rounded;
 }
 </style>

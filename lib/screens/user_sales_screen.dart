@@ -9,7 +9,7 @@ import 'dart:typed_data';
 class UserSalesScreen extends StatefulWidget {
   static const routeName = '/user-sales';
 
-  const UserSalesScreen({Key? key}) : super(key: key);
+  const UserSalesScreen({super.key});
 
   @override
   _UserSalesScreenState createState() => _UserSalesScreenState();
