@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/collection_provider.dart';
+import '../../widgets/auth_modal.dart';
 import '../auth/login_screen.dart';
 
 class ProfileTab extends StatelessWidget {
@@ -285,12 +286,6 @@ class ProfileTab extends StatelessWidget {
             onPressed: () async {
               Navigator.of(ctx).pop();
               await authProvider.signOut();
-              if (context.mounted) {
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                  (route) => false,
-                );
-              }
             },
             child: const Text(
               'Cerrar sesión',

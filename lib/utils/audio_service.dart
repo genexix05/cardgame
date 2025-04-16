@@ -1,134 +1,191 @@
-import 'package:just_audio/just_audio.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AudioService {
   static final AudioService _instance = AudioService._internal();
   factory AudioService() => _instance;
-
   AudioService._internal();
 
-  // Bandera para controlar si el audio debe estar desactivado
-  static bool _disableAudio = false;
+  late AudioPlayer _audioPlayer;
+  late AudioPlayer _musicPlayer;
+  bool _isAudioEnabled = true;
+  bool _isInitialized = false;
 
-  // Indicador de inicialización
-  bool _initialized = false;
+  // URLs de los efectos de sonido
+  static const String _buttonClickSound = 'sounds/button_click.mp3';
+  static const String _cardRevealSound = 'sounds/card_reveal.mp3';
+  static const String _packOpenSound = 'sounds/pack_open.mp3';
+  static const String _menuMusic = 'audio/menu_music.mp3';
+  static const String _loadingMusic = 'audio/loading_music.mp3';
 
-  // Jugadores de audio
-  AudioPlayer? _packOpenPlayer;
-  AudioPlayer? _cardRevealPlayer;
+  bool get isAudioEnabled => _isAudioEnabled;
 
-  // Método para inicializar los efectos de sonido
+  Future<void> toggleAudio() async {
+    try {
+      _isAudioEnabled = !_isAudioEnabled;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('audio_enabled', _isAudioEnabled);
+
+      if (!_isAudioEnabled) {
+        await stopMusic();
+      }
+    } catch (e) {
+      debugPrint('Error al alternar audio: $e');
+    }
+  }
+
   Future<void> initialize() async {
-    // Si el audio ya está desactivado o ya está inicializado, no hacer nada
-    if (_disableAudio || _initialized) return;
-
     try {
-      // Crear instancias de AudioPlayer solo si aún no existen
-      _packOpenPlayer ??= AudioPlayer();
-      _cardRevealPlayer ??= AudioPlayer();
+      debugPrint('Iniciando inicialización de AudioService');
 
-      // Intenta configurar volumen bajo para reducir problemas
-      await _packOpenPlayer?.setVolume(0.3);
-      await _cardRevealPlayer?.setVolume(0.3);
+      // Inicializar los reproductores primero
+      _audioPlayer = AudioPlayer();
+      _musicPlayer = AudioPlayer();
 
-      try {
-        // Intentar cargar los efectos de sonido
-        await _packOpenPlayer?.setAsset('assets/sounds/pack_open.mp3');
-        await _cardRevealPlayer?.setAsset('assets/sounds/card_reveal.mp3');
-        _initialized = true;
+      // Configurar el reproductor de música
+      await _musicPlayer.setReleaseMode(ReleaseMode.loop);
 
-        // Log solo en depuración
-        if (kDebugMode) {
-          print('Audio inicializado correctamente');
-        }
-      } catch (e) {
-        // Error al cargar archivos de sonido
-        if (kDebugMode) {
-          print('Error al cargar archivos de sonido: $e');
-        }
+      // Forzar audio habilitado
+      _isAudioEnabled = true;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('audio_enabled', true);
 
-        // Desactivar audio completamente para evitar más intentos
-        disableAudio();
-      }
+      _isInitialized = true;
+      debugPrint('AudioService inicializado correctamente');
     } catch (e) {
-      // Error general de inicialización
-      if (kDebugMode) {
-        print('Error al inicializar efectos de sonido: $e');
-      }
-
-      // Desactivar audio completamente
-      disableAudio();
+      debugPrint('Error crítico al inicializar AudioService: $e');
+      _isInitialized = false;
+      // Intentar reinicializar si hay error
+      await Future.delayed(const Duration(milliseconds: 100));
+      await initialize();
     }
   }
 
-  // Método para reproducir el sonido de apertura de sobre
-  Future<void> playPackOpenSound() async {
-    if (_disableAudio || !_initialized || _packOpenPlayer == null) return;
-
+  Future<void> playButtonClickSound() async {
     try {
-      await _packOpenPlayer?.seek(Duration.zero);
-      await _packOpenPlayer?.play();
+      debugPrint('Intentando reproducir sonido de botón');
+      await _audioPlayer.play(AssetSource(_buttonClickSound));
+      debugPrint('Sonido de botón reproducido');
     } catch (e) {
-      if (kDebugMode) {
-        print('Error al reproducir sonido de apertura: $e');
-      }
-
-      // Si hay error al reproducir, desactivar audio
-      disableAudio();
+      debugPrint('Error al reproducir sonido de botón: $e');
+      // Intentar reinicializar si hay error
+      await initialize();
     }
   }
 
-  // Método para reproducir el sonido de revelación de carta
   Future<void> playCardRevealSound() async {
-    if (_disableAudio || !_initialized || _cardRevealPlayer == null) return;
-
     try {
-      await _cardRevealPlayer?.seek(Duration.zero);
-      await _cardRevealPlayer?.play();
+      debugPrint('Intentando reproducir sonido de carta');
+      await _audioPlayer.play(AssetSource(_cardRevealSound));
+      debugPrint('Sonido de carta reproducido');
     } catch (e) {
-      if (kDebugMode) {
-        print('Error al reproducir sonido de revelación: $e');
-      }
-
-      // Si hay error al reproducir, desactivar audio
-      disableAudio();
+      debugPrint('Error al reproducir sonido de carta: $e');
     }
   }
 
-  // Método para liberar recursos de audio
-  void disposeAudio() {
+  Future<void> playPackOpenSound() async {
     try {
-      _packOpenPlayer?.dispose();
-      _cardRevealPlayer?.dispose();
-
-      // Establecer a null para permitir liberación de memoria
-      _packOpenPlayer = null;
-      _cardRevealPlayer = null;
-
-      _initialized = false;
+      debugPrint('Intentando reproducir sonido de sobre');
+      await _audioPlayer.play(AssetSource(_packOpenSound));
+      debugPrint('Sonido de sobre reproducido');
     } catch (e) {
-      if (kDebugMode) {
-        print('Error al liberar recursos de audio: $e');
-      }
+      debugPrint('Error al reproducir sonido de sobre: $e');
     }
   }
 
-  // Método para habilitar el audio
-  static void enableAudio() {
-    _disableAudio = false;
+  Future<void> _stopMusicCompletely() async {
+    try {
+      if (!_isInitialized) {
+        await initialize();
+      }
+      debugPrint('Deteniendo música completamente');
+      await _musicPlayer.stop();
+      await _musicPlayer.release();
+      await Future.delayed(const Duration(milliseconds: 100));
+      debugPrint('Música detenida completamente');
+    } catch (e) {
+      debugPrint('Error al detener música completamente: $e');
+      await initialize();
+    }
   }
 
-  // Método mejorado para desactivar el audio completamente
-  static void disableAudio() {
-    _disableAudio = true;
-
-    // Asegurar que los recursos se liberen inmediatamente
-    _instance.disposeAudio();
-
-    // Importante: también establecer _initialized = false para evitar reintentos
-    _instance._initialized = false;
+  Future<void> switchToLoadingMusic() async {
+    try {
+      if (!_isInitialized) {
+        await initialize();
+      }
+      debugPrint('Cambiando a música de carga');
+      await _stopMusicCompletely();
+      if (_isAudioEnabled) {
+        await playLoadingMusic();
+      }
+    } catch (e) {
+      debugPrint('Error al cambiar a música de carga: $e');
+      await initialize();
+    }
   }
 
-  // Método para verificar si el audio está habilitado
-  bool get isAudioEnabled => !_disableAudio && _initialized;
+  Future<void> switchToMenuMusic() async {
+    try {
+      if (!_isInitialized) {
+        await initialize();
+      }
+      debugPrint('Cambiando a música de menú');
+      await _stopMusicCompletely();
+      if (_isAudioEnabled) {
+        await playMenuMusic();
+      }
+    } catch (e) {
+      debugPrint('Error al cambiar a música de menú: $e');
+      await initialize();
+    }
+  }
+
+  Future<void> playMenuMusic() async {
+    try {
+      if (!_isInitialized) {
+        await initialize();
+      }
+      debugPrint('Intentando reproducir música de menú');
+      await _musicPlayer.play(AssetSource(_menuMusic), volume: 0.5);
+      debugPrint('Música de menú reproducida');
+    } catch (e) {
+      debugPrint('Error al reproducir música de menú: $e');
+      await initialize();
+    }
+  }
+
+  Future<void> playLoadingMusic() async {
+    try {
+      if (!_isInitialized) {
+        await initialize();
+      }
+      debugPrint('Intentando reproducir música de carga');
+      await _musicPlayer.play(AssetSource(_loadingMusic), volume: 0.5);
+      debugPrint('Música de carga reproducida');
+    } catch (e) {
+      debugPrint('Error al reproducir música de carga: $e');
+      await initialize();
+    }
+  }
+
+  Future<void> stopMusic() async {
+    try {
+      if (!_isInitialized) {
+        await initialize();
+      }
+      debugPrint('Deteniendo música');
+      await _musicPlayer.stop();
+      debugPrint('Música detenida');
+    } catch (e) {
+      debugPrint('Error al detener música: $e');
+      await initialize();
+    }
+  }
+
+  void dispose() {
+    _audioPlayer.dispose();
+    _musicPlayer.dispose();
+  }
 }

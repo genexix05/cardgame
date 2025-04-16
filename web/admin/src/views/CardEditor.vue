@@ -155,6 +155,54 @@
               </div>
             </div>
             
+            <!-- Atributos de personaje -->
+            <div v-if="cardData.type === 'character'" class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+              <div>
+                <label for="cardHealth" class="block text-sm font-medium text-gray-700 mb-1">Vida *</label>
+                <input 
+                  type="number" 
+                  class="form-control" 
+                  id="cardHealth" 
+                  v-model.number="cardData.health" 
+                  min="0" 
+                  max="100" 
+                  required
+                  :class="{'border-red-500': formErrors.health}"
+                >
+                <p v-if="formErrors.health" class="text-sm text-red-500 mt-1">{{ formErrors.health }}</p>
+              </div>
+
+              <div>
+                <label for="cardAttack" class="block text-sm font-medium text-gray-700 mb-1">Ataque *</label>
+                <input 
+                  type="number" 
+                  class="form-control" 
+                  id="cardAttack" 
+                  v-model.number="cardData.attack" 
+                  min="0" 
+                  max="100" 
+                  required
+                  :class="{'border-red-500': formErrors.attack}"
+                >
+                <p v-if="formErrors.attack" class="text-sm text-red-500 mt-1">{{ formErrors.attack }}</p>
+              </div>
+
+              <div>
+                <label for="cardDefense" class="block text-sm font-medium text-gray-700 mb-1">Defensa *</label>
+                <input 
+                  type="number" 
+                  class="form-control" 
+                  id="cardDefense" 
+                  v-model.number="cardData.defense" 
+                  min="0" 
+                  max="100" 
+                  required
+                  :class="{'border-red-500': formErrors.defense}"
+                >
+                <p v-if="formErrors.defense" class="text-sm text-red-500 mt-1">{{ formErrors.defense }}</p>
+              </div>
+            </div>
+            
             <!-- Descripción -->
             <div>
               <label for="cardDescription" class="block text-sm font-medium text-gray-700 mb-1">Descripción *</label>
@@ -355,6 +403,9 @@ export default {
       formErrors.rarity = '';
       formErrors.series = '';
       formErrors.description = '';
+      formErrors.health = '';
+      formErrors.attack = '';
+      formErrors.defense = '';
       
       try {
         // Validación básica

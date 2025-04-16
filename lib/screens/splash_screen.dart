@@ -3,9 +3,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
-import '../providers/music_provider.dart';
+import '../widgets/auth_modal.dart';
 import 'auth/login_screen.dart';
 import 'home_screen.dart';
+import 'auth/complete_profile_screen.dart';
+import '../utils/transitions.dart';
+import '../utils/audio_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -19,16 +22,11 @@ class _SplashScreenState extends State<SplashScreen>
   bool _showTapToContinue = false;
   late AnimationController _animationController;
   late Animation<double> _opacityAnimation;
+  bool _isFirstBuild = true;
 
   @override
   void initState() {
     super.initState();
-
-    // Iniciar la música de carga
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final musicProvider = Provider.of<MusicProvider>(context, listen: false);
-      musicProvider.playLoadingMusic();
-    });
 
     // Configurar el controlador de animación
     _animationController = AnimationController(
@@ -56,6 +54,17 @@ class _SplashScreenState extends State<SplashScreen>
         });
       }
     });
+
+    // Iniciar la música de carga
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (mounted) {
+        final audioService = AudioService();
+        await audioService.initialize();
+        if (audioService.isAudioEnabled) {
+          await audioService.playLoadingMusic();
+        }
+      }
+    });
   }
 
   @override
@@ -67,45 +76,54 @@ class _SplashScreenState extends State<SplashScreen>
     super.dispose();
   }
 
-  Future<void> _checkAuthState() async {
-    try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final musicProvider = Provider.of<MusicProvider>(context, listen: false);
+  Future<void> _handleTap() async {
+    if (!_showTapToContinue) return;
 
-      try {
-        if (authProvider.isAuthenticated) {
-          await musicProvider.stopMusic();
-          if (mounted) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final audioService = AudioService();
+
+    try {
+      await audioService.stopMusic();
+
+      if (!mounted) return;
+
+      // Solo mostrar el modal de autenticación si el usuario no está autenticado
+      if (!authProvider.isAuthenticated) {
+        final result = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => const AuthModal(),
+        );
+
+        if (result == true && mounted) {
+          if (authProvider.user?.displayName == null ||
+              authProvider.user!.displayName!.isEmpty) {
             Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const HomeScreen()),
+              CustomPageRoute(
+                child: const CompleteProfileScreen(),
+                settings: const RouteSettings(name: '/complete-profile'),
+              ),
             );
-          }
-        } else {
-          await musicProvider.stopMusic();
-          if (mounted) {
+          } else {
             Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const LoginScreen()),
+              CustomPageRoute(
+                child: const HomeScreen(),
+                settings: const RouteSettings(name: '/home'),
+              ),
             );
           }
         }
-      } catch (e) {
-        print("Error al navegar: $e");
-        await musicProvider.stopMusic();
-        if (mounted) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const LoginScreen()),
-          );
-        }
-      }
-    } catch (e) {
-      print("Error en _checkAuthState: $e");
-      final musicProvider = Provider.of<MusicProvider>(context, listen: false);
-      await musicProvider.stopMusic();
-      if (mounted) {
+      } else {
+        // Si el usuario está autenticado, ir directamente a HomeScreen
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          CustomPageRoute(
+            child: const HomeScreen(),
+            settings: const RouteSettings(name: '/home'),
+          ),
         );
       }
+    } catch (e) {
+      print("Error al manejar el tap: $e");
     }
   }
 
@@ -113,11 +131,7 @@ class _SplashScreenState extends State<SplashScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       body: GestureDetector(
-        onTap: () {
-          if (_showTapToContinue) {
-            _checkAuthState();
-          }
-        },
+        onTap: _handleTap,
         child: Stack(
           fit: StackFit.expand,
           children: [

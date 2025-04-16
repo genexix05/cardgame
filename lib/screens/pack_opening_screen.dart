@@ -76,9 +76,8 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
 
   // Método para reactivar el audio
   void _reactivateAudio() {
-    // Esta función es para reactivar el audio si está desactivado por completo
     try {
-      AudioService.enableAudio(); // Nuevo método que añadiremos al AudioService
+      _audioService.toggleAudio(); // Cambiamos enableAudio por toggleAudio
     } catch (e) {
       print('Error al reactivar audio: $e');
     }

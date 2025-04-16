@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../main.dart'; // Importamos el archivo main para acceder al navigatorKey
 
 class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
@@ -16,14 +17,7 @@ class AuthProvider with ChangeNotifier {
   String? get errorMessage => _error; // Alias para mantener compatibilidad
 
   AuthProvider() {
-    try {
-      // Retrasamos la inicialización para asegurar que Firebase esté completamente inicializado
-      Future.delayed(Duration(seconds: 1), () {
-        _initAuthListener();
-      });
-    } catch (e) {
-      print("Error en constructor de AuthProvider: $e");
-    }
+    _initAuthListener();
   }
 
   Future<void> _initAuthListener() async {
@@ -34,11 +28,9 @@ class AuthProvider with ChangeNotifier {
         notifyListeners();
       }, onError: (error) {
         print("Error en authStateChanges: $error");
-        // No cierro la app, solo registro el error
       });
     } catch (e) {
       print("Error al inicializar AuthProvider: $e");
-      // No cierro la app, solo registro el error
     }
   }
 
@@ -131,7 +123,54 @@ class AuthProvider with ChangeNotifier {
 
   // Cerrar sesión
   Future<void> signOut() async {
-    await _authService.signOut();
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      // Primero cerrar sesión en Firebase
+      await _authService.signOut();
+
+      // Luego limpiar el estado local
+      _user = null;
+      _error = null;
+
+      // Esperar un momento para asegurar que el estado se ha actualizado
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      // Finalmente, redirigir a la pantalla de carga
+      if (navigatorKey.currentContext != null) {
+        Navigator.of(navigatorKey.currentContext!).pushNamedAndRemoveUntil(
+          '/',
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      _error = e.toString();
+      print("Error al cerrar sesión: $e");
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Actualizar perfil del usuario
+  Future<bool> updateProfile({String? displayName, String? photoURL}) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _authService.updateProfile(
+          displayName: displayName, photoURL: photoURL);
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      _error = _handleAuthError(e);
+      notifyListeners();
+      return false;
+    }
   }
 
   // Manejar errores de autenticación

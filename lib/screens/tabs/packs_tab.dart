@@ -7,6 +7,7 @@ import '../../models/card_pack.dart';
 import '../pack_opening_screen.dart';
 import 'dart:convert';
 import 'dart:typed_data';
+import '../../utils/transitions.dart';
 
 class PacksTab extends StatefulWidget {
   const PacksTab({super.key});
@@ -399,10 +400,11 @@ class _PacksTabState extends State<PacksTab>
       // Navegar a la pantalla de apertura de sobres
       if (mounted) {
         Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => PackOpeningScreen(
+          CustomPageRoute(
+            child: PackOpeningScreen(
               cards: packProvider.lastOpenedCards,
             ),
+            settings: const RouteSettings(name: '/pack-opening'),
           ),
         );
       }

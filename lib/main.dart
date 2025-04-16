@@ -9,7 +9,10 @@ import 'providers/collection_provider.dart';
 import 'providers/pack_provider.dart';
 import 'screens/splash_screen.dart';
 import 'screens/user_sales_screen.dart';
-import 'providers/music_provider.dart';
+import 'utils/audio_service.dart';
+
+// Definir el navigatorKey global
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   // Asegurar inicialización de Flutter
@@ -19,6 +22,10 @@ void main() async {
     // Inicializar Firebase con la forma estándar (sin opciones personalizadas)
     await Firebase.initializeApp();
     print("Firebase inicializado correctamente");
+
+    // Inicializar AudioService
+    final audioService = AudioService();
+    await audioService.initialize();
   } catch (e) {
     print("Error al inicializar Firebase: $e");
   }
@@ -62,9 +69,9 @@ class DragonBallCardApp extends StatelessWidget {
           update: (_, firestoreService, packOpeningService, previous) =>
               previous!..update(firestoreService, packOpeningService),
         ),
-        ChangeNotifierProvider(create: (_) => MusicProvider()),
       ],
       child: MaterialApp(
+        navigatorKey: navigatorKey,
         title: 'Dragon Ball Card Collector',
         theme: ThemeData(
           primarySwatch: Colors.orange,
@@ -84,7 +91,7 @@ class DragonBallCardApp extends StatelessWidget {
           fontFamily: 'Roboto',
         ),
         themeMode: ThemeMode.system,
-        // Cambiar a SplashScreen como pantalla inicial
+        // Definir rutas de la aplicación
         home: const SplashScreen(),
         routes: {
           UserSalesScreen.routeName: (context) => const UserSalesScreen(),

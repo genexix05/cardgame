@@ -7,6 +7,19 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
 
+  AuthService() {
+    // Configurar la persistencia al inicializar el servicio
+    _initPersistence();
+  }
+
+  Future<void> _initPersistence() async {
+    try {
+      await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
+    } catch (e) {
+      print('Error al configurar la persistencia: $e');
+    }
+  }
+
   // Obtener el usuario actual
   User? get currentUser => _auth.currentUser;
 

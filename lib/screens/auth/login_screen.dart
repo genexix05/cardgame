@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import 'register_screen.dart';
 import '../home_screen.dart';
+import '../../utils/transitions.dart';
+import '../../widgets/sound_button.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -34,7 +36,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (success && mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          CustomPageRoute(
+            child: const HomeScreen(),
+            settings: const RouteSettings(name: '/home'),
+          ),
         );
       }
     }
@@ -183,7 +188,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           SizedBox(
                             width: double.infinity,
                             height: 50,
-                            child: ElevatedButton(
+                            child: SoundButton(
                               onPressed: authProvider.isLoading ? null : _login,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFFFF5722),
@@ -235,8 +240,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     TextButton(
                       onPressed: () {
                         Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const RegisterScreen(),
+                          CustomPageRoute(
+                            child: const RegisterScreen(),
+                            settings: const RouteSettings(name: '/register'),
                           ),
                         );
                       },

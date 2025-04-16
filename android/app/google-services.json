@@ -12,7 +12,20 @@
           "package_name": "com.dragonballcardgame.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1074439862642-j0fved89uq99089bsdv400r8k0md1sno.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.dragonballcardgame.app",
+            "certificate_hash": "801d6608408cce9c1226c3430a09dad86f598396"
+          }
+        },
+        {
+          "client_id": "1074439862642-joo805hjq6e8rc8llbavh3bgmt2brv8r.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyD6T_Vf-7ShXcbLOMulrVuRGfZE41M9Y-w"
@@ -20,7 +33,49 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1074439862642-joo805hjq6e8rc8llbavh3bgmt2brv8r.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1074439862642:android:cb701f0bff02acb7f3c5eb",
+        "android_client_info": {
+          "package_name": "com.example.cardgame"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1074439862642-50qrqddetotdfdp1rpog3c7a5i1o36bn.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.cardgame",
+            "certificate_hash": "801d6608408cce9c1226c3430a09dad86f598396"
+          }
+        },
+        {
+          "client_id": "1074439862642-joo805hjq6e8rc8llbavh3bgmt2brv8r.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD6T_Vf-7ShXcbLOMulrVuRGfZE41M9Y-w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1074439862642-joo805hjq6e8rc8llbavh3bgmt2brv8r.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

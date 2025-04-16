@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/collection_provider.dart';
+import '../utils/audio_service.dart';
+import '../widgets/sound_button.dart';
 import 'tabs/collection_tab.dart';
 import 'tabs/packs_tab.dart';
 import 'tabs/market_tab.dart';
@@ -16,6 +18,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  final AudioService _audioService = AudioService();
 
   // Lista de pestañas
   final List<Widget> _tabs = [
@@ -25,15 +28,25 @@ class _HomeScreenState extends State<HomeScreen> {
     const ProfileTab(),
   ];
 
-  // Cargar datos de usuario al iniciar
   @override
   void initState() {
     super.initState();
 
     // Utilizar addPostFrameCallback para asegurarnos de que el widget ya se ha construido
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       _loadUserData();
+      // Inicializar y reproducir música
+      await _audioService.initialize();
+      if (_audioService.isAudioEnabled) {
+        await _audioService.playMenuMusic();
+      }
     });
+  }
+
+  @override
+  void dispose() {
+    _audioService.stopMusic();
+    super.dispose();
   }
 
   // Cargar datos del usuario
@@ -53,10 +66,11 @@ class _HomeScreenState extends State<HomeScreen> {
       body: _tabs[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
-        onTap: (index) {
+        onTap: (index) async {
           setState(() {
             _currentIndex = index;
           });
+          await _audioService.playButtonClickSound();
         },
         type: BottomNavigationBarType.fixed,
         backgroundColor: Theme.of(context).colorScheme.surface,

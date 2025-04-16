@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../home_screen.dart';
+import '../../utils/transitions.dart';
+import '../../widgets/sound_button.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -36,7 +38,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (success && mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          CustomPageRoute(
+            child: const HomeScreen(),
+            settings: const RouteSettings(name: '/home'),
+          ),
         );
       }
     }
@@ -226,7 +231,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           SizedBox(
                             width: double.infinity,
                             height: 50,
-                            child: ElevatedButton(
+                            child: SoundButton(
                               onPressed:
                                   authProvider.isLoading ? null : _register,
                               style: ElevatedButton.styleFrom(
