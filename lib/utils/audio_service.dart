@@ -94,19 +94,31 @@ class AudioService {
     }
   }
 
-  Future<void> _stopMusicCompletely() async {
+  Future<void> _fadeOutMusic() async {
     try {
       if (!_isInitialized) {
         await initialize();
       }
-      debugPrint('Deteniendo música completamente');
+      debugPrint('Iniciando fade out de música');
+
+      const int steps = 10;
+      const Duration duration = Duration(milliseconds: 500);
+      final Duration stepDuration =
+          Duration(milliseconds: duration.inMilliseconds ~/ steps);
+
+      // Reducir el volumen gradualmente desde 0.5
+      for (var i = steps; i >= 0; i--) {
+        final double newVolume = 0.5 * (i / steps);
+        await _musicPlayer.setVolume(newVolume);
+        await Future.delayed(stepDuration);
+      }
+
+      // Detener la música completamente
       await _musicPlayer.stop();
-      await _musicPlayer.release();
-      await Future.delayed(const Duration(milliseconds: 100));
-      debugPrint('Música detenida completamente');
+      debugPrint('Fade out de música completado');
     } catch (e) {
-      debugPrint('Error al detener música completamente: $e');
-      await initialize();
+      debugPrint('Error en fade out de música: $e');
+      await _musicPlayer.stop();
     }
   }
 
@@ -116,7 +128,8 @@ class AudioService {
         await initialize();
       }
       debugPrint('Cambiando a música de carga');
-      await _stopMusicCompletely();
+      await _fadeOutMusic();
+      await Future.delayed(const Duration(milliseconds: 100));
       if (_isAudioEnabled) {
         await playLoadingMusic();
       }
@@ -132,7 +145,8 @@ class AudioService {
         await initialize();
       }
       debugPrint('Cambiando a música de menú');
-      await _stopMusicCompletely();
+      await _fadeOutMusic();
+      await Future.delayed(const Duration(milliseconds: 100));
       if (_isAudioEnabled) {
         await playMenuMusic();
       }
@@ -148,7 +162,18 @@ class AudioService {
         await initialize();
       }
       debugPrint('Intentando reproducir música de menú');
-      await _musicPlayer.play(AssetSource(_menuMusic), volume: 0.5);
+      await _musicPlayer.play(AssetSource(_menuMusic), volume: 0.0);
+      // Fade in gradual
+      const int steps = 10;
+      const Duration duration = Duration(milliseconds: 500);
+      final Duration stepDuration =
+          Duration(milliseconds: duration.inMilliseconds ~/ steps);
+
+      for (var i = 1; i <= steps; i++) {
+        final double newVolume = 0.5 * (i / steps);
+        await _musicPlayer.setVolume(newVolume);
+        await Future.delayed(stepDuration);
+      }
       debugPrint('Música de menú reproducida');
     } catch (e) {
       debugPrint('Error al reproducir música de menú: $e');
@@ -162,7 +187,18 @@ class AudioService {
         await initialize();
       }
       debugPrint('Intentando reproducir música de carga');
-      await _musicPlayer.play(AssetSource(_loadingMusic), volume: 0.5);
+      await _musicPlayer.play(AssetSource(_loadingMusic), volume: 0.0);
+      // Fade in gradual
+      const int steps = 10;
+      const Duration duration = Duration(milliseconds: 500);
+      final Duration stepDuration =
+          Duration(milliseconds: duration.inMilliseconds ~/ steps);
+
+      for (var i = 1; i <= steps; i++) {
+        final double newVolume = 0.5 * (i / steps);
+        await _musicPlayer.setVolume(newVolume);
+        await Future.delayed(stepDuration);
+      }
       debugPrint('Música de carga reproducida');
     } catch (e) {
       debugPrint('Error al reproducir música de carga: $e');

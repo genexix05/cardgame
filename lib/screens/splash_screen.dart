@@ -60,9 +60,7 @@ class _SplashScreenState extends State<SplashScreen>
       if (mounted) {
         final audioService = AudioService();
         await audioService.initialize();
-        if (audioService.isAudioEnabled) {
-          await audioService.playLoadingMusic();
-        }
+        await audioService.switchToLoadingMusic();
       }
     });
   }
@@ -83,8 +81,6 @@ class _SplashScreenState extends State<SplashScreen>
     final audioService = AudioService();
 
     try {
-      await audioService.stopMusic();
-
       if (!mounted) return;
 
       // Solo mostrar el modal de autenticación si el usuario no está autenticado

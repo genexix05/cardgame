@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../utils/audio_service.dart';
 
 class AuthModal extends StatelessWidget {
   const AuthModal({super.key});
@@ -46,6 +47,8 @@ class AuthModal extends StatelessWidget {
                     try {
                       final success = await authProvider.signInWithGoogle();
                       if (success && context.mounted) {
+                        final audioService = AudioService();
+                        await audioService.stopMusic();
                         Navigator.of(context).pop(true);
                       }
                     } catch (e) {

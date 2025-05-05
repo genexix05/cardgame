@@ -4,6 +4,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/collection_provider.dart';
 import '../../widgets/auth_modal.dart';
 import '../auth/login_screen.dart';
+import '../../utils/audio_service.dart';
 
 class ProfileTab extends StatelessWidget {
   const ProfileTab({super.key});
@@ -285,6 +286,10 @@ class ProfileTab extends StatelessWidget {
           TextButton(
             onPressed: () async {
               Navigator.of(ctx).pop();
+              // Detener la música antes de cerrar sesión
+              final audioService = AudioService();
+              await audioService.stopMusic();
+              await Future.delayed(const Duration(milliseconds: 100));
               await authProvider.signOut();
             },
             child: const Text(
