@@ -8,6 +8,12 @@ class AudioService {
   AudioService._internal();
 
   late AudioPlayer _audioPlayer;
+  // Lista de reproductores para sonidos de botón
+  final List<AudioPlayer> _buttonAudioPlayers = [];
+  int _currentButtonPlayerIndex = 0;
+  static const int _maxButtonPlayers =
+      3; // Número de reproductores para botones
+
   late AudioPlayer _musicPlayer;
   bool _isAudioEnabled = true;
   bool _isInitialized = false;
@@ -41,6 +47,13 @@ class AudioService {
 
       // Inicializar los reproductores primero
       _audioPlayer = AudioPlayer();
+
+      // Inicializar el pool de reproductores para botones
+      _buttonAudioPlayers.clear();
+      for (int i = 0; i < _maxButtonPlayers; i++) {
+        _buttonAudioPlayers.add(AudioPlayer());
+      }
+
       _musicPlayer = AudioPlayer();
 
       // Configurar el reproductor de música
@@ -64,8 +77,23 @@ class AudioService {
 
   Future<void> playButtonClickSound() async {
     try {
-      debugPrint('Intentando reproducir sonido de botón');
-      await _audioPlayer.play(AssetSource(_buttonClickSound));
+      if (!_isInitialized) {
+        await initialize();
+      }
+
+      // Usamos el siguiente reproductor disponible del pool
+      final currentPlayer = _buttonAudioPlayers[_currentButtonPlayerIndex];
+
+      // Rotamos al siguiente reproductor para la próxima llamada
+      _currentButtonPlayerIndex =
+          (_currentButtonPlayerIndex + 1) % _maxButtonPlayers;
+
+      debugPrint(
+          'Intentando reproducir sonido de botón con player #${_currentButtonPlayerIndex}');
+
+      // No usamos await para que no bloquee
+      currentPlayer.play(AssetSource(_buttonClickSound));
+
       debugPrint('Sonido de botón reproducido');
     } catch (e) {
       debugPrint('Error al reproducir sonido de botón: $e');
@@ -222,6 +250,10 @@ class AudioService {
 
   void dispose() {
     _audioPlayer.dispose();
+    // Liberar todos los reproductores del pool de botones
+    for (final player in _buttonAudioPlayers) {
+      player.dispose();
+    }
     _musicPlayer.dispose();
   }
 }

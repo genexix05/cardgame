@@ -21,7 +21,9 @@ class SoundButton extends StatelessWidget {
       onPressed: enabled
           ? () async {
               final audioService = AudioService();
-              await audioService.playButtonClickSound();
+              // Reproducir el sonido sin esperar que termine
+              audioService.playButtonClickSound();
+              // Ejecutar la acción del botón si existe
               if (onPressed != null) {
                 await onPressed!();
               }
