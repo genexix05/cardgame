@@ -84,7 +84,7 @@
       <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         <div v-for="card in filteredCards" :key="card.id" class="card">
           <div class="relative">
-            <img :src="prepareImageUrl(card.imageUrl)" class="w-full h-48 object-cover rounded-t-lg" :alt="card.name">
+            <img :src="prepareImageUrl(card.imageUrl)" class="w-full h-full object-cover rounded-t-lg" :alt="card.name">
             <div class="absolute top-2 right-2">
               <span class="badge" :class="getRarityBadgeClass(card.rarity)">
                 {{ getRarityText(card.rarity) }}

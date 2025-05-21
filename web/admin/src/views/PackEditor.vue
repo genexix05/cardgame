@@ -43,9 +43,9 @@
               <img :src="previewUrl" alt="Vista previa" class="w-full h-64 object-cover rounded-lg">
             </div>
             <div v-else-if="packData.imageUrl" class="preview-container">
-              <img :src="prepareImageUrl(packData.imageUrl)" alt="Imagen actual" class="w-full h-64 object-cover rounded-lg">
+              <img :src="prepareImageUrl(packData.imageUrl)" alt="Imagen actual" class="w-full h-full object-cover rounded-lg">
             </div>
-            <div v-else class="no-image-container h-64 flex items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+            <div v-else class="no-image-container h-full flex items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
               <i class="fas fa-image text-gray-400 text-4xl"></i>
             </div>
           </div>
@@ -247,21 +247,78 @@
               
               <div v-else>
                 <div class="flex items-center gap-2 mb-4">
-                  <select 
-                    class="form-select flex-1" 
-                    v-model="selectedCardId"
-                  >
-                    <option value="">Seleccionar carta para añadir...</option>
-                    <option v-for="card in availableCards" :key="card.id" :value="card.id">
-                      {{ card.name }} ({{ getRarityText(card.rarity) }})
-                    </option>
-                  </select>
+                  <div class="relative flex-1">
+                    <input 
+                      type="text" 
+                      class="form-control pr-10" 
+                      v-model="cardSearchQuery"
+                      @input="filterCards"
+                      @focus="showCardResults = true"
+                      placeholder="Buscar carta por nombre..."
+                    >
+                    <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <i class="fas fa-search text-gray-400"></i>
+                    </div>
+                    
+                    <!-- Resultados de búsqueda -->
+                    <div v-if="showCardResults && filteredCards.length > 0" 
+                         class="absolute z-10 w-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 max-h-96 overflow-y-auto">
+                      <div v-for="card in filteredCards" 
+                           :key="card.id"
+                           class="px-4 py-2 hover:bg-orange-50 cursor-pointer flex items-center gap-3"
+                           @click="selectCard(card)">
+                        <!-- Miniatura de la carta -->
+                        <div class="w-12 h-16 flex-shrink-0">
+                          <div v-if="card.imageUrl" class="w-full h-full rounded-md overflow-hidden shadow-sm">
+                            <img 
+                              :src="prepareImageUrl(card.imageUrl)" 
+                              :alt="card.name"
+                              class="w-full h-full object-cover"
+                            >
+                          </div>
+                          <div v-else class="w-full h-full bg-gray-100 rounded-md flex items-center justify-center">
+                            <i class="fas fa-image text-gray-400"></i>
+                          </div>
+                        </div>
+                        
+                        <!-- Información de la carta -->
+                        <div class="flex-grow min-w-0 flex flex-col justify-center h-full">
+                          <div class="flex flex-row justify-between items-start">
+                            <!-- Nombre a la izquierda -->
+                            <span class="font-medium truncate flex-1">{{ card.name }}</span>
+                            <!-- Rareza y tipo a la derecha, en columna -->
+                            <div class="flex flex-col items-end ml-2">
+                              <span :class="['px-2 py-0.5 rounded text-xs whitespace-nowrap mb-1', getBadgeClass(card.rarity)]">
+                                {{ getRarityText(card.rarity) }}
+                              </span>
+                              <span class="text-xs text-gray-500 px-2 py-0.5 bg-gray-100 rounded whitespace-nowrap">
+                                {{ getTypeText(card.type) }}
+                              </span>
+                            </div>
+                          </div>
+                          <!-- Serie debajo -->
+                          <div class="mt-1">
+                            <span class="text-xs text-gray-500 px-2 py-0.5 bg-gray-50 rounded">
+                              {{ card.series || 'Sin serie' }}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Mensaje cuando no hay resultados -->
+                    <div v-if="showCardResults && cardSearchQuery && filteredCards.length === 0" 
+                         class="absolute z-10 w-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 p-4 text-center text-gray-500">
+                      No se encontraron cartas que coincidan con "{{ cardSearchQuery }}"
+                    </div>
+                  </div>
                   
                   <button 
                     type="button" 
                     class="btn-outline-primary" 
                     @click="addFixedCard" 
                     :disabled="!selectedCardId"
+                    id="addCardButton"
                   >
                     <i class="fas fa-plus-circle mr-1"></i>Añadir
                   </button>
@@ -291,18 +348,44 @@
                       <thead class="bg-gray-50">
                         <tr>
                           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
-                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Carta</th>
                           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rareza</th>
                           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
                           <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                         </tr>
                       </thead>
                       <tbody class="bg-white divide-y divide-gray-200">
-                        <tr v-for="(cardId, index) in fixedCards" :key="index">
+                        <tr v-for="(cardId, index) in fixedCards" :key="index" class="hover:bg-gray-50">
                           <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ index + 1 }}</td>
-                          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ getCardName(cardId) }}</td>
-                          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ getCardRarity(cardId) }}</td>
-                          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ getCardType(cardId) }}</td>
+                          <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center gap-3">
+                              <!-- Miniatura de la carta -->
+                              <div class="w-12 h-16 flex-shrink-0">
+                                <div v-if="getCardImage(cardId)" class="w-full h-full rounded-md overflow-hidden shadow-sm">
+                                  <img 
+                                    :src="prepareImageUrl(getCardImage(cardId))" 
+                                    :alt="getCardName(cardId)"
+                                    class="w-full h-full object-cover"
+                                  >
+                                </div>
+                                <div v-else class="w-full h-full bg-gray-100 rounded-md flex items-center justify-center">
+                                  <i class="fas fa-image text-gray-400"></i>
+                                </div>
+                              </div>
+                              <!-- Nombre de la carta -->
+                              <div class="text-sm font-medium text-gray-900">
+                                {{ getCardName(cardId) }}
+                              </div>
+                            </div>
+                          </td>
+                          <td class="px-6 py-4 whitespace-nowrap">
+                            <span :class="['px-2 py-1 rounded text-xs font-medium', getBadgeClass(getCardRarityValue(cardId))]">
+                              {{ getCardRarity(cardId) }}
+                            </span>
+                          </td>
+                          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ getCardType(cardId) }}
+                          </td>
                           <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
                             <button 
                               type="button" 
@@ -374,7 +457,7 @@
 </template>
 
 <script>
-import { ref, reactive, computed, onMounted, watch } from 'vue';
+import { ref, reactive, computed, onMounted, watch, onUnmounted } from 'vue';
 import { useStore } from 'vuex';
 import { useRoute, useRouter } from 'vue-router';
 import { prepareImageUrl } from '../utils/storage';
@@ -441,6 +524,11 @@ export default {
     const submitError = ref('');
     const formErrors = reactive({});
     const probabilityError = ref('');
+    
+    // Para la búsqueda de cartas
+    const cardSearchQuery = ref('');
+    const showCardResults = ref(false);
+    const filteredCards = ref([]);
     
     // Calcular el total de probabilidades
     const probabilityTotal = computed(() => {
@@ -639,153 +727,67 @@ export default {
       validateProbabilities();
     };
     
-    // Añadir una carta fija
-    const addFixedCard = () => {
-      // Limpiar errores anteriores
-      submitError.value = '';
-      
-      if (!selectedCardId.value) {
-        console.log('No hay carta seleccionada para añadir');
-        submitError.value = 'Por favor, selecciona una carta para añadir';
+    // Filtrar cartas según la búsqueda
+    const filterCards = () => {
+      if (!cardSearchQuery.value) {
+        filteredCards.value = availableCards.value.slice(0, 10); // Mostrar solo las primeras 10 cartas si no hay búsqueda
         return;
       }
       
-      // Asegurarse de que fixedCards.value sea un array
+      const query = cardSearchQuery.value.toLowerCase();
+      filteredCards.value = availableCards.value
+        .filter(card => 
+          card.name.toLowerCase().includes(query) ||
+          getRarityText(card.rarity).toLowerCase().includes(query) ||
+          getTypeText(card.type).toLowerCase().includes(query) ||
+          (card.series && card.series.toLowerCase().includes(query))
+        )
+        .slice(0, 10); // Limitar a 10 resultados
+    };
+    
+    // Seleccionar una carta de los resultados
+    const selectCard = (card) => {
+      selectedCardId.value = card.id;
+      cardSearchQuery.value = card.name;
+      showCardResults.value = false;
+    };
+    
+    // Cerrar resultados al hacer clic fuera
+    const handleClickOutside = (event) => {
+      const searchInput = document.querySelector('.card-search-input');
+      if (searchInput && !searchInput.contains(event.target)) {
+        showCardResults.value = false;
+      }
+    };
+    
+    // Observar cambios en availableCards para actualizar filteredCards
+    watch(availableCards, () => {
+      filterCards();
+    }, { immediate: true });
+    
+    // Agregar y remover event listener para clicks fuera
+    onMounted(() => {
+      document.addEventListener('click', handleClickOutside);
+      
+      // Asegurar que fixedCards sea un array desde el inicio
       if (!Array.isArray(fixedCards.value)) {
-        console.warn('fixedCards no era un array, inicializando como array vacío');
+        console.log('fixedCards no es un array en onMounted, inicializando como []');
         fixedCards.value = [];
+      } else {
+        console.log('fixedCards ya es un array en onMounted, longitud:', fixedCards.value.length);
       }
       
-      // Verificar si la carta ya está en el array
-      if (fixedCards.value.includes(selectedCardId.value)) {
-        console.log('La carta ya está en fixedCards:', selectedCardId.value);
-        submitError.value = 'Esta carta ya ha sido añadida al sobre';
-        selectedCardId.value = '';
-        return;
-      }
+      // Cargar datos
+      loadPack();
+      loadCards();
+      validateProbabilities();
       
-      // Crear un nuevo array con la carta añadida (para asegurar reactividad)
-      const newFixedCards = [...fixedCards.value, selectedCardId.value];
-      
-      // Asignar el nuevo array al ref de fixedCards
-      fixedCards.value = newFixedCards;
-      
-      // Obtener el nombre de la carta para mostrar en un mensaje
-      const card = cards.value.find(c => c.id === selectedCardId.value);
-      const cardName = card ? card.name : 'Carta desconocida';
-      const cardRarity = card ? getRarityText(card.rarity) : '';
-      
-      console.log('Carta añadida a fixedCards:', selectedCardId.value);
-      console.log('Nombre de la carta:', cardName);
-      console.log('Rareza de la carta:', cardRarity);
-      console.log('fixedCards actual:', fixedCards.value);
-      
-      // Mostrar un mensaje de éxito visible
-      const messageContainer = document.createElement('div');
-      messageContainer.className = 'alert alert-success mt-2 d-flex align-items-center';
-      messageContainer.innerHTML = `
-        <i class="fas fa-check-circle me-2 fs-5"></i>
-        <div>
-          <strong>¡Carta añadida!</strong><br>
-          <span>${cardName}</span>
-          <span class="badge ${getBadgeClass(card ? card.rarity : '')} ms-1">${cardRarity}</span>
-          <div class="mt-1">Total: ${fixedCards.value.length} carta(s) fija(s) en este sobre</div>
-        </div>
-      `;
-      
-      // Añadir botón para cerrar la alerta
-      const closeButton = document.createElement('button');
-      closeButton.type = 'button';
-      closeButton.className = 'btn-close ms-auto';
-      closeButton.addEventListener('click', () => {
-        if (messageContainer.parentNode) {
-          messageContainer.parentNode.removeChild(messageContainer);
-        }
-      });
-      messageContainer.appendChild(closeButton);
-      
-      // Añadir al DOM cerca del botón de añadir carta
-      const addCardButton = document.querySelector('#addCardButton');
-      if (addCardButton && addCardButton.parentNode) {
-        // Eliminar alertas anteriores si existen
-        const existingAlerts = addCardButton.parentNode.querySelectorAll('.alert-success');
-        existingAlerts.forEach(alert => {
-          if (alert.parentNode) {
-            alert.parentNode.removeChild(alert);
-          }
-        });
-        
-        addCardButton.parentNode.appendChild(messageContainer);
-        
-        // Eliminar después de 5 segundos
-        setTimeout(() => {
-          if (messageContainer.parentNode) {
-            messageContainer.parentNode.removeChild(messageContainer);
-          }
-        }, 5000);
-      }
-      
-      // Resetear la selección
-      selectedCardId.value = '';
-    };
+      console.log('Inicialización completada');
+    });
     
-    // Obtener clase de badge según rareza
-    const getBadgeClass = (rarity) => {
-      switch (rarity) {
-        case 'common': return 'bg-secondary';
-        case 'uncommon': return 'bg-success';
-        case 'rare': return 'bg-primary';
-        case 'superRare': return 'bg-info';
-        case 'ultraRare': return 'bg-warning text-dark';
-        case 'legendary': return 'bg-danger';
-        default: return 'bg-secondary';
-      }
-    };
-    
-    // Eliminar una carta fija
-    const removeFixedCard = (index) => {
-      if (!Array.isArray(fixedCards.value)) {
-        console.error('fixedCards no es un array');
-        fixedCards.value = [];
-        return;
-      }
-      
-      if (index < 0 || index >= fixedCards.value.length) {
-        console.error('Índice fuera de rango:', index, 'longitud:', fixedCards.value.length);
-        return;
-      }
-      
-      // Guardar la carta que vamos a eliminar para el log
-      const removedCard = fixedCards.value[index];
-      
-      // Crear un nuevo array sin la carta eliminada
-      const newFixedCards = [
-        ...fixedCards.value.slice(0, index),
-        ...fixedCards.value.slice(index + 1)
-      ];
-      
-      // Asignar el nuevo array al ref de fixedCards
-      fixedCards.value = newFixedCards;
-      
-      console.log('Carta eliminada de fixedCards:', removedCard);
-      console.log('fixedCards actual:', fixedCards.value);
-    };
-    
-    // Obtener información de las cartas
-    const getCardName = (cardId) => {
-      const card = cards.value.find(c => c.id === cardId);
-      return card ? card.name : 'Carta desconocida';
-    };
-    
-    const getCardRarity = (cardId) => {
-      const card = cards.value.find(c => c.id === cardId);
-      return card ? getRarityText(card.rarity) : '';
-    };
-    
-    const getCardType = (cardId) => {
-      const card = cards.value.find(c => c.id === cardId);
-      return card ? getTypeText(card.type) : '';
-    };
+    onUnmounted(() => {
+      document.removeEventListener('click', handleClickOutside);
+    });
     
     // Guardar el sobre
     const savePack = async () => {
@@ -977,25 +979,120 @@ export default {
       }
     });
     
-    // Inicializar
-    onMounted(() => {
-      console.log('PackEditor montado - inicializando componente');
-      
-      // Asegurar que fixedCards sea un array desde el inicio
+    // Obtener información de las cartas
+    const getCardName = (cardId) => {
+      const card = cards.value.find(c => c.id === cardId);
+      return card ? card.name : 'Carta desconocida';
+    };
+    
+    const getCardRarity = (cardId) => {
+      const card = cards.value.find(c => c.id === cardId);
+      return card ? getRarityText(card.rarity) : '';
+    };
+
+    const getCardRarityValue = (cardId) => {
+      const card = cards.value.find(c => c.id === cardId);
+      return card ? card.rarity : '';
+    };
+    
+    const getCardType = (cardId) => {
+      const card = cards.value.find(c => c.id === cardId);
+      return card ? getTypeText(card.type) : '';
+    };
+
+    const getCardImage = (cardId) => {
+      const card = cards.value.find(c => c.id === cardId);
+      return card ? card.imageUrl : null;
+    };
+    
+    // Eliminar una carta fija
+    const removeFixedCard = (index) => {
       if (!Array.isArray(fixedCards.value)) {
-        console.log('fixedCards no es un array en onMounted, inicializando como []');
+        console.error('fixedCards no es un array');
         fixedCards.value = [];
-      } else {
-        console.log('fixedCards ya es un array en onMounted, longitud:', fixedCards.value.length);
+        return;
       }
       
-      // Cargar datos
-      loadPack();
-      loadCards();
-      validateProbabilities();
+      if (index < 0 || index >= fixedCards.value.length) {
+        console.error('Índice fuera de rango:', index, 'longitud:', fixedCards.value.length);
+        return;
+      }
       
-      console.log('Inicialización completada');
-    });
+      // Guardar la carta que vamos a eliminar para el log
+      const removedCard = fixedCards.value[index];
+      
+      // Crear un nuevo array sin la carta eliminada
+      const newFixedCards = [
+        ...fixedCards.value.slice(0, index),
+        ...fixedCards.value.slice(index + 1)
+      ];
+      
+      // Asignar el nuevo array al ref de fixedCards
+      fixedCards.value = newFixedCards;
+      
+      console.log('Carta eliminada de fixedCards:', removedCard);
+      console.log('fixedCards actual:', fixedCards.value);
+    };
+    
+    // Obtener clase de badge según rareza
+    const getBadgeClass = (rarity) => {
+      switch (rarity) {
+        case 'common': return 'bg-gray-200 text-gray-800';
+        case 'uncommon': return 'bg-green-100 text-green-800';
+        case 'rare': return 'bg-blue-100 text-blue-800';
+        case 'superRare': return 'bg-purple-100 text-purple-800';
+        case 'ultraRare': return 'bg-yellow-100 text-yellow-800';
+        case 'legendary': return 'bg-red-100 text-red-800';
+        default: return 'bg-gray-200 text-gray-800';
+      }
+    };
+
+    // Añadir una carta fija
+    const addFixedCard = () => {
+      // Limpiar errores anteriores
+      submitError.value = '';
+      
+      if (!selectedCardId.value) {
+        console.log('No hay carta seleccionada para añadir');
+        submitError.value = 'Por favor, selecciona una carta para añadir';
+        return;
+      }
+      
+      // Asegurarse de que fixedCards.value sea un array
+      if (!Array.isArray(fixedCards.value)) {
+        console.warn('fixedCards no era un array, inicializando como array vacío');
+        fixedCards.value = [];
+      }
+      
+      // Verificar si la carta ya está en el array
+      if (fixedCards.value.includes(selectedCardId.value)) {
+        console.log('La carta ya está en fixedCards:', selectedCardId.value);
+        submitError.value = 'Esta carta ya ha sido añadida al sobre';
+        selectedCardId.value = '';
+        cardSearchQuery.value = '';
+        return;
+      }
+      
+      // Crear un nuevo array con la carta añadida (para asegurar reactividad)
+      const newFixedCards = [...fixedCards.value, selectedCardId.value];
+      
+      // Asignar el nuevo array al ref de fixedCards
+      fixedCards.value = newFixedCards;
+      
+      // Obtener el nombre de la carta para mostrar en un mensaje
+      const card = cards.value.find(c => c.id === selectedCardId.value);
+      const cardName = card ? card.name : 'Carta desconocida';
+      const cardRarity = card ? getRarityText(card.rarity) : '';
+      
+      console.log('Carta añadida a fixedCards:', selectedCardId.value);
+      console.log('Nombre de la carta:', cardName);
+      console.log('Rareza de la carta:', cardRarity);
+      console.log('fixedCards actual:', fixedCards.value);
+      
+      // Resetear la selección
+      selectedCardId.value = '';
+      cardSearchQuery.value = '';
+    };
     
     return {
       packData,
@@ -1022,15 +1119,21 @@ export default {
       loadPack,
       validateProbabilities,
       distributeProbabilities,
-      addFixedCard,
-      removeFixedCard,
       getCardName,
       getCardRarity,
       getCardType,
       getRarityText,
       getTypeText,
       prepareImageUrl,
-      getBadgeClass
+      getBadgeClass,
+      cardSearchQuery,
+      showCardResults,
+      filteredCards,
+      filterCards,
+      selectCard,
+      addFixedCard,
+      getCardImage,
+      getCardRarityValue
     };
   }
 };
@@ -1046,11 +1149,11 @@ export default {
 }
 
 .preview-container img {
-  @apply w-full h-64 object-cover rounded-lg;
+  @apply w-full h-full object-cover rounded-lg;
 }
 
 .no-image-container {
-  @apply h-64 flex items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300;
+  @apply h-full flex items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300;
 }
 
 .btn-primary {

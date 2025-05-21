@@ -130,7 +130,6 @@ class CardGrid extends StatelessWidget {
         fit: BoxFit.cover,
         width: double.infinity,
         errorBuilder: (context, error, stackTrace) {
-          print('Error al cargar imagen base64: $error');
           return Container(
             color: Colors.grey.shade300,
             child: const Icon(
@@ -153,7 +152,6 @@ class CardGrid extends StatelessWidget {
           ),
         ),
         errorWidget: (context, url, error) {
-          print('Error al cargar imagen URL: $error');
           return Container(
             color: Colors.grey.shade300,
             child: const Icon(
@@ -174,7 +172,7 @@ class CardGrid extends StatelessWidget {
         try {
           return base64Decode(parts[1]);
         } catch (e) {
-          print('Error al decodificar imagen base64: $e');
+          return null;
         }
       }
     }

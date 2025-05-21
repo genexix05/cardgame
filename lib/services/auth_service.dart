@@ -8,16 +8,8 @@ class AuthService {
   final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   AuthService() {
-    // Configurar la persistencia al inicializar el servicio
-    _initPersistence();
-  }
-
-  Future<void> _initPersistence() async {
-    try {
-      await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
-    } catch (e) {
-      print('Error al configurar la persistencia: $e');
-    }
+    // Ya no es necesario configurar la persistencia en plataformas móviles
+    // La persistencia se maneja automáticamente
   }
 
   // Obtener el usuario actual

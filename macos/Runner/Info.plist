@@ -28,5 +28,30 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+		<key>CFBundleTypeRole</key>
+		<string>Editor</string>
+		<key>CFBundleURLSchemes</key>
+		<array>
+			<string>com.googleusercontent.apps.1074439862642-k35vl2np2jm79vdnntcf7rsbtoeq8uji</string>
+		</array>
+		</dict>
+	</array>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>google</string>
+		<string>com.googleusercontent.apps.1074439862642-k35vl2np2jm79vdnntcf7rsbtoeq8uji</string>
+	</array>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Necesario para el debugger de Flutter en red local.</string>
+
+	<!-- Declarar los servicios Bonjour que Flutter usa -->
+	<key>NSBonjourServices</key>
+	<array>
+	<string>_dartobservatory._tcp</string>
+	<string>_flutterdebug._tcp</string>
+	</array>
 </dict>
 </plist>

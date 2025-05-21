@@ -1,11 +1,16 @@
 // ignore_for_file: deprecated_member_use
 
+import 'dart:async'; // Para Completer
+import 'dart:convert';
+import 'dart:typed_data'; // Para ByteData y Uint8List
+import 'dart:ui' as ui;
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:particular/particular.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/auth_modal.dart';
-import 'auth/login_screen.dart';
-import 'home_screen.dart';
+import 'main_navigation_screen.dart';
 import 'auth/complete_profile_screen.dart';
 import '../utils/transitions.dart';
 import '../utils/audio_service.dart';
@@ -22,12 +27,19 @@ class _SplashScreenState extends State<SplashScreen>
   bool _showTapToContinue = false;
   late AnimationController _animationController;
   late Animation<double> _opacityAnimation;
-  bool _isFirstBuild = true;
+  final bool _isFirstBuild = true;
+  final ParticularController _particleController = ParticularController();
 
   @override
   void initState() {
     super.initState();
 
+    _initializeAnimations();
+    _loadParticleAssets(); // Cargar partículas
+    _startLoadingMusic();
+  }
+
+  void _initializeAnimations() {
     // Configurar el controlador de animación
     _animationController = AnimationController(
       vsync: this,
@@ -54,7 +66,42 @@ class _SplashScreenState extends State<SplashScreen>
         });
       }
     });
+  }
 
+  Future<void> _loadParticleAssets() async {
+    try {
+      // Load particle configs file
+      String jsonString =
+          await rootBundle.loadString("assets/animations/snow.json");
+      final configsData = jsonDecode(jsonString);
+
+      // Load particle texture file
+      // Asegúrate que "textureFileName" en tu snow.json apunte a "texture.png"
+      // o ajusta la ruta aquí directamente si es necesario.
+      final String texturePath =
+          "assets/animations/${configsData["textureFileName"]}";
+      ByteData bytes = await rootBundle.load(texturePath);
+      ui.Image texture = await _loadUIImage(bytes.buffer.asUint8List());
+
+      // Add particles layer
+      _particleController.addLayer(
+        configsData: configsData,
+      );
+    } catch (e) {
+      print("Error al cargar assets de partículas: $e");
+      // Opcional: agregar una capa de partículas por defecto o ninguna si falla la carga
+    }
+  }
+
+  Future<ui.Image> _loadUIImage(Uint8List list) async {
+    final Completer<ui.Image> completer = Completer();
+    ui.decodeImageFromList(list, (ui.Image img) {
+      return completer.complete(img);
+    });
+    return completer.future;
+  }
+
+  void _startLoadingMusic() {
     // Iniciar la música de carga
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (mounted) {
@@ -103,18 +150,19 @@ class _SplashScreenState extends State<SplashScreen>
           } else {
             Navigator.of(context).pushReplacement(
               CustomPageRoute(
-                child: const HomeScreen(),
-                settings: const RouteSettings(name: '/home'),
+                child: const MainNavigationScreen(),
+                settings:
+                    const RouteSettings(name: MainNavigationScreen.routeName),
               ),
             );
           }
         }
       } else {
-        // Si el usuario está autenticado, ir directamente a HomeScreen
+        // Si el usuario está autenticado, ir directamente a MainNavigationScreen
         Navigator.of(context).pushReplacement(
           CustomPageRoute(
-            child: const HomeScreen(),
-            settings: const RouteSettings(name: '/home'),
+            child: const MainNavigationScreen(),
+            settings: const RouteSettings(name: MainNavigationScreen.routeName),
           ),
         );
       }
@@ -136,7 +184,6 @@ class _SplashScreenState extends State<SplashScreen>
               'assets/images/dragon_ball_logo.png',
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
-                print('Error al cargar la imagen: $error');
                 return Container(
                   decoration: const BoxDecoration(
                     gradient: LinearGradient(
@@ -150,6 +197,10 @@ class _SplashScreenState extends State<SplashScreen>
                   ),
                 );
               },
+            ),
+            // Efecto de partículas
+            Particular(
+              controller: _particleController,
             ),
             // Contenido centrado
             Column(

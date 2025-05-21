@@ -1,0 +1,2 @@
+/Users/bauki/Programacion/cardgame/android/app/.cxx/Debug/6e5t7156/x86/CMakeFiles/edit_cache.dir
+/Users/bauki/Programacion/cardgame/android/app/.cxx/Debug/6e5t7156/x86/CMakeFiles/rebuild_cache.dir

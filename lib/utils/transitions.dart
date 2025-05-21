@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 class CustomPageRoute extends PageRouteBuilder {
   final Widget child;
+  @override
   final RouteSettings settings;
 
   CustomPageRoute({

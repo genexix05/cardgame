@@ -454,7 +454,6 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
         imageBytes,
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) {
-          print('Error al cargar imagen base64: $error');
           return _buildErrorImage();
         },
       );
@@ -475,7 +474,6 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
           );
         },
         errorBuilder: (context, error, stackTrace) {
-          print('Error al cargar imagen URL: $error');
           return _buildErrorImage();
         },
       );
@@ -490,7 +488,7 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
         try {
           return base64Decode(parts[1]);
         } catch (e) {
-          print('Error al decodificar imagen base64: $e');
+          return null;
         }
       }
     }

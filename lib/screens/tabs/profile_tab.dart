@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/collection_provider.dart';
-import '../../widgets/auth_modal.dart';
-import '../auth/login_screen.dart';
 import '../../utils/audio_service.dart';
 
 class ProfileTab extends StatelessWidget {

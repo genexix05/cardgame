@@ -47,7 +47,6 @@ class _MarketTabState extends State<MarketTab>
         height: 100,
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) {
-          print('Error al cargar imagen base64: $error');
           return Container(
             width: 100,
             height: 100,
@@ -84,7 +83,6 @@ class _MarketTabState extends State<MarketTab>
           );
         },
         errorBuilder: (context, error, stackTrace) {
-          print('Error al cargar imagen URL: $error');
           return Container(
             width: 100,
             height: 100,
@@ -107,7 +105,7 @@ class _MarketTabState extends State<MarketTab>
         try {
           return base64Decode(parts[1]);
         } catch (e) {
-          print('Error al decodificar imagen base64: $e');
+          return null;
         }
       }
     }

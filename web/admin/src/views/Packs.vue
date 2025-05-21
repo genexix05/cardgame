@@ -70,7 +70,7 @@
       <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <div v-for="pack in filteredPacks" :key="pack.id" class="card">
           <div class="relative">
-            <img :src="prepareImageUrl(pack.imageUrl)" class="w-full h-48 object-cover rounded-t-lg" :alt="pack.name">
+            <img :src="prepareImageUrl(pack.imageUrl)" class="w-full h-full object-cover rounded-t-lg" :alt="pack.name">
             <div class="absolute top-2 right-2">
               <span class="badge bg-yellow-100 text-yellow-800">
                 {{ pack.price }} <i class="fas fa-coins ml-1"></i>

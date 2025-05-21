@@ -40,12 +40,12 @@
           
           <div class="card-preview mb-4">
             <div v-if="previewUrl" class="preview-container">
-              <img :src="previewUrl" alt="Vista previa" class="w-full h-64 object-cover rounded-lg">
+              <img :src="previewUrl" alt="Vista previa" class="w-full h-full object-cover rounded-lg">
             </div>
             <div v-else-if="cardData.imageUrl" class="preview-container">
-              <img :src="prepareImageUrl(cardData.imageUrl)" alt="Imagen actual" class="w-full h-64 object-cover rounded-lg">
+              <img :src="prepareImageUrl(cardData.imageUrl)" alt="Imagen actual" class="w-full h-full object-cover rounded-lg">
             </div>
-            <div v-else class="no-image-container h-64 flex items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+            <div v-else class="no-image-container h-full flex items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
               <i class="fas fa-image text-gray-400 text-4xl"></i>
             </div>
           </div>
@@ -292,7 +292,7 @@
 import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { useStore } from 'vuex';
 import { useRoute, useRouter } from 'vue-router';
-import { prepareImageUrl } from '../utils/storage';
+import { prepareImageUrl, compressAndConvertToBase64 } from '../utils/storage';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -597,7 +597,7 @@ export default {
 }
 
 .preview-container img {
-  @apply w-full h-64 object-cover rounded-lg;
+  @apply w-full h-full object-cover rounded-lg;
 }
 
 .no-image-container {

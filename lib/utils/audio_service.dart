@@ -89,7 +89,7 @@ class AudioService {
           (_currentButtonPlayerIndex + 1) % _maxButtonPlayers;
 
       debugPrint(
-          'Intentando reproducir sonido de botón con player #${_currentButtonPlayerIndex}');
+          'Intentando reproducir sonido de botón con player #$_currentButtonPlayerIndex');
 
       // No usamos await para que no bloquee
       currentPlayer.play(AssetSource(_buttonClickSound));

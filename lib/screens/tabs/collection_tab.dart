@@ -8,7 +8,6 @@ import '../../models/card.dart' as model;
 import '../../models/user_collection.dart';
 import '../../services/firestore_service.dart';
 import 'dart:convert';
-import 'dart:typed_data';
 
 class CollectionTab extends StatefulWidget {
   const CollectionTab({super.key});
@@ -49,7 +48,6 @@ class _CollectionTabState extends State<CollectionTab>
         imageBytes,
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) {
-          print('Error al cargar imagen base64: $error');
           return Container(
             color: Colors.grey.shade300,
             child: const Icon(
@@ -80,7 +78,6 @@ class _CollectionTabState extends State<CollectionTab>
           );
         },
         errorBuilder: (context, error, stackTrace) {
-          print('Error al cargar imagen URL: $error');
           return Container(
             color: Colors.grey.shade300,
             child: const Icon(
@@ -101,7 +98,7 @@ class _CollectionTabState extends State<CollectionTab>
         try {
           return base64Decode(parts[1]);
         } catch (e) {
-          print('Error al decodificar imagen base64: $e');
+          return null;
         }
       }
     }
@@ -832,7 +829,6 @@ class CardSearchDelegate extends SearchDelegate<model.Card?> {
         imageBytes,
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) {
-          print('Error al cargar imagen base64: $error');
           return Container(
             color: Colors.grey.shade300,
             child: const Icon(
@@ -863,7 +859,6 @@ class CardSearchDelegate extends SearchDelegate<model.Card?> {
           );
         },
         errorBuilder: (context, error, stackTrace) {
-          print('Error al cargar imagen URL: $error');
           return Container(
             color: Colors.grey.shade300,
             child: const Icon(
@@ -884,7 +879,7 @@ class CardSearchDelegate extends SearchDelegate<model.Card?> {
         try {
           return base64Decode(parts[1]);
         } catch (e) {
-          print('Error al decodificar imagen base64: $e');
+          return null;
         }
       }
     }

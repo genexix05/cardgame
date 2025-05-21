@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/card.dart';
 import '../models/card_pack.dart';
 import '../models/user_collection.dart';
+import '../models/deck.dart';
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -11,20 +12,76 @@ class FirestoreService {
   CollectionReference get _cardsCollection => _firestore.collection('cards');
   CollectionReference get _packsCollection => _firestore.collection('packs');
   CollectionReference get _marketCollection => _firestore.collection('market');
+  CollectionReference get _decksCollection => _firestore.collection('decks');
 
   // MÉTODOS PARA CARTAS ==================================
 
   // Obtener todas las cartas
   Future<List<Card>> getAllCards() async {
     try {
-      final QuerySnapshot snapshot = await _cardsCollection.get();
-      return snapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
-        return Card.fromMap(data);
-      }).toList();
+      print('🔍 Obteniendo todas las cartas...');
+      final querySnapshot = await _cardsCollection.get();
+      print('📊 Documentos encontrados: ${querySnapshot.docs.length}');
+
+      final List<Card> cards = [];
+      int cardsWithEmptyId = 0;
+
+      for (var doc in querySnapshot.docs) {
+        try {
+          final data = doc.data() as Map<String, dynamic>;
+          print('\n📄 Procesando carta:');
+          print('- ID del documento: ${doc.id}');
+
+          // Asegurarse de que el ID del documento se incluya en los datos
+          if (!data.containsKey('id') || (data['id'] as String).isEmpty) {
+            print('- ⚠️ ID en datos ausente o vacío, usando ID del documento');
+            data['id'] = doc.id;
+          } else if (data['id'] != doc.id) {
+            print(
+                '- ⚠️ ID en datos (${data['id']}) difiere del ID del documento');
+            data['id'] = doc.id; // Forzar el uso del ID del documento
+          }
+
+          final card = Card.fromMap(data, documentId: doc.id);
+
+          if (card.id.isEmpty) {
+            cardsWithEmptyId++;
+            print(
+                '- ❌ Error: Carta con ID vacío a pesar de usar ID del documento');
+          }
+
+          print(
+              '- ✅ Carta procesada: ${card.name} (${card.type}) - ID: ${card.id}');
+          cards.add(card);
+        } catch (e) {
+          print('❌ Error al procesar carta ${doc.id}: $e');
+        }
+      }
+
+      print('\n📋 Resumen:');
+      print('- Total de cartas procesadas: ${cards.length}');
+      print('- Cartas con ID vacío: $cardsWithEmptyId');
+
+      // Buscar cartas de Goku para depuración
+      final gokuCards =
+          cards.where((c) => c.name.toUpperCase().contains('GOKU')).toList();
+
+      if (gokuCards.isNotEmpty) {
+        print('\n🔎 Cartas de GOKU encontradas:');
+        for (final card in gokuCards) {
+          print('  - ${card.name} (${card.type}) - ID: "${card.id}"');
+        }
+      } else {
+        print('\n⚠️ No se encontraron cartas de GOKU en la base de datos');
+      }
+
+      return cards;
     } catch (e) {
-      print('Error al obtener cartas: $e');
-      return [];
+      print('❌ Error al obtener cartas: $e');
+      if (e is FirebaseException) {
+        print('🔥 Código de error: ${e.code}, Mensaje: ${e.message}');
+      }
+      rethrow;
     }
   }
 
@@ -42,7 +99,8 @@ class FirestoreService {
       if (doc.exists) {
         try {
           final data = doc.data() as Map<String, dynamic>;
-          final card = Card.fromMap(data);
+          // Pasar el ID del documento para asegurar que la carta tenga un ID válido
+          final card = Card.fromMap(data, documentId: doc.id);
           print('✅ Carta encontrada: ${card.name}');
           return card;
         } catch (parseError) {
@@ -61,6 +119,23 @@ class FirestoreService {
             'Detalles del error Firebase - Código: ${e.code}, Mensaje: ${e.message}');
       }
       return null;
+    }
+  }
+
+  // Verificar si una carta existe en Firestore
+  Future<bool> checkCardExists(String cardId) async {
+    try {
+      if (cardId.isEmpty || cardId.trim().isEmpty) {
+        print('⚠️ checkCardExists: Se recibió un ID de carta vacío o inválido');
+        return false;
+      }
+
+      print('🔍 Verificando si existe la carta con ID: $cardId');
+      final DocumentSnapshot doc = await _cardsCollection.doc(cardId).get();
+      return doc.exists;
+    } catch (e) {
+      print('Error al verificar si existe la carta: $e');
+      return false;
     }
   }
 
@@ -1125,6 +1200,204 @@ class FirestoreService {
     } catch (e) {
       print('Error al comprar carta: $e');
       return false;
+    }
+  }
+
+  // MÉTODOS PARA MAZOS ==================================
+
+  // Obtener todos los mazos de un usuario
+  Future<List<Deck>> getUserDecks(String userId) async {
+    try {
+      final QuerySnapshot snapshot = await _decksCollection
+          .where('userId', isEqualTo: userId)
+          .orderBy('lastModified', descending: true)
+          .get();
+
+      return snapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        return Deck.fromMap({...data, 'id': doc.id});
+      }).toList();
+    } catch (e) {
+      print('Error al obtener mazos del usuario: $e');
+      return [];
+    }
+  }
+
+  // Crear un nuevo mazo
+  Future<Deck?> createDeck(
+      String userId, String name, List<String> cardIds) async {
+    try {
+      if (userId.isEmpty) {
+        throw Exception('El ID del usuario no puede estar vacío');
+      }
+      if (name.isEmpty) {
+        throw Exception('El nombre del mazo no puede estar vacío');
+      }
+      if (cardIds.isEmpty) {
+        throw Exception('El mazo debe contener al menos una carta');
+      }
+
+      print('Creando mazo:');
+      print('- Nombre: $name');
+      print('- IDs de cartas: ${cardIds.join(", ")}');
+
+      // Obtener las cartas para validar el mazo
+      final List<Card> cards = await getAllCards();
+      print('Cartas obtenidas: ${cards.length}');
+
+      // Imprimir detalles de cada carta
+      print('\nDetalles de las cartas disponibles:');
+      for (var card in cards) {
+        print('Carta: ${card.name}');
+        print('- ID: ${card.id}');
+        print('- Tipo: ${card.type}');
+        print('- Rareza: ${card.rarity}');
+        print('---');
+      }
+
+      // Verificar que todas las cartas existen
+      for (String cardId in cardIds) {
+        if (!cards.any((card) => card.id == cardId)) {
+          throw Exception('No se encontró la carta con ID: $cardId');
+        }
+      }
+
+      final deck = Deck(
+        id: '',
+        name: name,
+        userId: userId,
+        cardIds: cardIds,
+        createdAt: DateTime.now(),
+        lastModified: DateTime.now(),
+      );
+
+      if (!deck.isValid(cards)) {
+        throw Exception('El mazo no cumple con las restricciones');
+      }
+
+      print('Mazo válido, guardando en Firestore...');
+      final docRef = await _decksCollection.add(deck.toMap());
+      print('Mazo guardado con ID: ${docRef.id}');
+
+      return deck.copyWith(id: docRef.id);
+    } catch (e) {
+      print('Error al crear mazo: $e');
+      rethrow;
+    }
+  }
+
+  // Actualizar un mazo existente
+  Future<bool> updateDeck(Deck deck) async {
+    try {
+      await _decksCollection.doc(deck.id).update(deck.toMap());
+      return true;
+    } catch (e) {
+      print('Error al actualizar mazo: $e');
+      return false;
+    }
+  }
+
+  // Eliminar un mazo
+  Future<bool> deleteDeck(String deckId) async {
+    try {
+      await _decksCollection.doc(deckId).delete();
+      return true;
+    } catch (e) {
+      print('Error al eliminar mazo: $e');
+      return false;
+    }
+  }
+
+  // Obtener un mazo por ID
+  Future<Deck?> getDeckById(String deckId) async {
+    try {
+      final DocumentSnapshot doc = await _decksCollection.doc(deckId).get();
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        return Deck.fromMap({...data, 'id': doc.id});
+      }
+      return null;
+    } catch (e) {
+      print('Error al obtener mazo: $e');
+      return null;
+    }
+  }
+
+  // Añadir una nueva carta a Firestore
+  Future<String?> addNewCard(Map<String, dynamic> cardData) async {
+    try {
+      print('🆕 Añadiendo nueva carta a Firestore:');
+      print('- Nombre: ${cardData['name']}');
+      print('- Tipo: ${cardData['type']}');
+
+      // Validar datos mínimos
+      if (cardData['name'] == null || (cardData['name'] as String).isEmpty) {
+        print('❌ Error: El nombre de la carta es obligatorio');
+        return null;
+      }
+
+      // Crear un nuevo documento en la colección de cartas
+      final docRef = _cardsCollection.doc();
+
+      // Asignar el ID del documento a los datos de la carta
+      cardData['id'] = docRef.id;
+
+      // Guardar la carta en Firestore
+      await docRef.set(cardData);
+
+      print('✅ Carta creada correctamente con ID: ${docRef.id}');
+      return docRef.id;
+    } catch (e) {
+      print('❌ Error al crear nueva carta: $e');
+      return null;
+    }
+  }
+
+  // Obtener cartas por consulta de texto (nombre o series)
+  Future<List<Card>> getCardsByQuery(String query) async {
+    try {
+      print('🔍 Buscando cartas relacionadas con: "$query"');
+      final querySnapshot = await _cardsCollection.get();
+
+      final List<Card> allCards = [];
+      for (var doc in querySnapshot.docs) {
+        try {
+          final data = doc.data() as Map<String, dynamic>;
+          data['id'] = doc.id; // Asegurar que el ID del documento se incluya
+          final card = Card.fromMap(data, documentId: doc.id);
+          allCards.add(card);
+        } catch (e) {
+          print('Error al procesar carta ${doc.id}: $e');
+        }
+      }
+
+      // Filtrar cartas que coincidan con la consulta
+      final filteredCards = allCards.where((card) {
+        final nameMatch = card.name.toLowerCase().contains(query.toLowerCase());
+        final seriesMatch =
+            card.series.toLowerCase().contains(query.toLowerCase());
+        return nameMatch || seriesMatch;
+      }).toList();
+
+      print(
+          '📊 Encontradas ${filteredCards.length} cartas relacionadas con "$query"');
+
+      if (filteredCards.isNotEmpty) {
+        print('Ejemplos de cartas encontradas:');
+        final limit = filteredCards.length > 5 ? 5 : filteredCards.length;
+        for (int i = 0; i < limit; i++) {
+          print(
+              '- ${filteredCards[i].name} (${filteredCards[i].type}) ID: ${filteredCards[i].id}');
+        }
+      }
+
+      // Ordenar por nombre
+      filteredCards.sort((a, b) => a.name.compareTo(b.name));
+
+      return filteredCards;
+    } catch (e) {
+      print('Error al buscar cartas por consulta: $e');
+      return [];
     }
   }
 }

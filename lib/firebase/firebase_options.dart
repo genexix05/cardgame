@@ -16,10 +16,7 @@ class DefaultFirebaseOptions {
       case TargetPlatform.iOS:
         return ios;
       case TargetPlatform.macOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions has not been configured for macos - '
-          'you can create this by running the FlutterFire CLI again.',
-        );
+        return macos;
       case TargetPlatform.windows:
         throw UnsupportedError(
           'DefaultFirebaseOptions has not been configured for windows - '
@@ -61,6 +58,17 @@ class DefaultFirebaseOptions {
     projectId: 'dragonball-cardgame',
     storageBucket: 'dragonball-cardgame.firebasestorage.app',
     iosClientId: '1074439862642-xxxxx.apps.googleusercontent.com',
+    iosBundleId: 'com.dragonballcardgame.app',
+  );
+
+  static const FirebaseOptions macos = FirebaseOptions(
+    apiKey: 'AIzaSyB5UjfEPsB2tbEFTjtpz69QRkEoxITvRno',
+    appId: '1:1074439862642:ios:888f8a2c0419f9dff3c5eb',
+    messagingSenderId: '1074439862642',
+    projectId: 'dragonball-cardgame',
+    storageBucket: 'dragonball-cardgame.firebasestorage.app',
+    androidClientId: '1074439862642-50qrqddetotdfdp1rpog3c7a5i1o36bn.apps.googleusercontent.com',
+    iosClientId: '1074439862642-k35vl2np2jm79vdnntcf7rsbtoeq8uji.apps.googleusercontent.com',
     iosBundleId: 'com.dragonballcardgame.app',
   );
 }
