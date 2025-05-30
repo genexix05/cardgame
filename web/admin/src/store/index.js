@@ -146,22 +146,48 @@ export default createStore({
         // Si hay una imagen para subir
         if (cardData.imageFile) {
           try {
-            // Convertir imagen a base64 con compresión
+            console.log('Tamaño original del archivo de carta:', cardData.imageFile.size, 'bytes');
+            
+            // Convertir imagen a base64 con compresión más agresiva
             const base64Image = await compressAndConvertToBase64(
               cardData.imageFile, 
-              800,  // Ancho máximo en píxeles
-              0.7   // Calidad (0-1)
+              600,  // Ancho máximo reducido de 800 a 600 píxeles
+              0.5   // Calidad reducida de 0.7 a 0.5
             );
             
-            // Guardar la imagen como string base64 en lugar de URL
-            cardData.imageUrl = base64Image;
+            // Verificar el tamaño del base64 resultante
+            const base64Size = base64Image.length;
+            console.log('Tamaño de la imagen base64 de carta:', base64Size, 'caracteres');
+            
+            // Firestore tiene un límite de ~1MB por campo, verificar que no lo excedamos
+            const maxSize = 1048487; // Límite de Firestore en bytes
+            if (base64Size > maxSize) {
+              // Si aún es muy grande, intentar con compresión aún más agresiva
+              console.warn('Imagen de carta aún muy grande, aplicando compresión adicional...');
+              const base64ImageCompressed = await compressAndConvertToBase64(
+                cardData.imageFile, 
+                400,  // Ancho máximo aún más reducido
+                0.3   // Calidad muy baja
+              );
+              
+              const compressedSize = base64ImageCompressed.length;
+              console.log('Tamaño de la imagen de carta con compresión adicional:', compressedSize, 'caracteres');
+              
+              if (compressedSize > maxSize) {
+                throw new Error('La imagen es demasiado grande incluso después de la compresión. Por favor, usa una imagen más pequeña.');
+              }
+              
+              cardData.imageUrl = base64ImageCompressed;
+            } else {
+              cardData.imageUrl = base64Image;
+            }
             
             // Eliminar el archivo de la data que se enviará a Firestore
             delete cardData.imageFile;
             
-            console.log('✅ Imagen convertida a base64 correctamente');
+            console.log('✅ Imagen de carta convertida a base64 correctamente');
           } catch (error) {
-            console.error('❌ Error al procesar imagen:', error);
+            console.error('❌ Error al procesar imagen de carta:', error);
             throw new Error(`Error al procesar la imagen: ${error.message || 'Error desconocido'}`);
           }
         }
@@ -338,17 +364,41 @@ export default createStore({
             console.log('Tipo de imageFile:', typeof packToSave.imageFile);
             console.log('Es instancia de Blob?', packToSave.imageFile instanceof Blob);
             console.log('Es instancia de File?', packToSave.imageFile instanceof File);
-            console.log('Valor de imageFile:', packToSave.imageFile);
+            console.log('Tamaño original del archivo:', packToSave.imageFile.size, 'bytes');
             
-            // Convertir imagen a base64 con compresión
+            // Convertir imagen a base64 con compresión más agresiva
             const base64Image = await compressAndConvertToBase64(
               packToSave.imageFile, 
-              800,  // Ancho máximo en píxeles
-              0.7   // Calidad (0-1)
+              600,  // Ancho máximo reducido de 800 a 600 píxeles
+              0.5   // Calidad reducida de 0.7 a 0.5
             );
             
-            // Guardar la imagen como string base64 en lugar de URL
-            packToSave.imageUrl = base64Image;
+            // Verificar el tamaño del base64 resultante
+            const base64Size = base64Image.length;
+            console.log('Tamaño de la imagen base64:', base64Size, 'caracteres');
+            
+            // Firestore tiene un límite de ~1MB por campo, verificar que no lo excedamos
+            const maxSize = 1048487; // Límite de Firestore en bytes
+            if (base64Size > maxSize) {
+              // Si aún es muy grande, intentar con compresión aún más agresiva
+              console.warn('Imagen aún muy grande, aplicando compresión adicional...');
+              const base64ImageCompressed = await compressAndConvertToBase64(
+                packToSave.imageFile, 
+                400,  // Ancho máximo aún más reducido
+                0.3   // Calidad muy baja
+              );
+              
+              const compressedSize = base64ImageCompressed.length;
+              console.log('Tamaño de la imagen con compresión adicional:', compressedSize, 'caracteres');
+              
+              if (compressedSize > maxSize) {
+                throw new Error('La imagen es demasiado grande incluso después de la compresión. Por favor, usa una imagen más pequeña.');
+              }
+              
+              packToSave.imageUrl = base64ImageCompressed;
+            } else {
+              packToSave.imageUrl = base64Image;
+            }
             
             // Eliminar el archivo de la data que se enviará a Firestore
             delete packToSave.imageFile;
@@ -445,24 +495,48 @@ export default createStore({
             console.log('Tipo de imageFile (update):', typeof packToSave.imageFile);
             console.log('Es instancia de Blob? (update)', packToSave.imageFile instanceof Blob);
             console.log('Es instancia de File? (update)', packToSave.imageFile instanceof File);
-            console.log('Valor de imageFile (update):', packToSave.imageFile);
+            console.log('Tamaño original del archivo (update):', packToSave.imageFile.size, 'bytes');
             
-            // Convertir imagen a base64 con compresión
+            // Convertir imagen a base64 con compresión más agresiva
             const base64Image = await compressAndConvertToBase64(
               packToSave.imageFile, 
-              800,  // Ancho máximo en píxeles
-              0.7   // Calidad (0-1)
+              600,  // Ancho máximo reducido de 800 a 600 píxeles
+              0.5   // Calidad reducida de 0.7 a 0.5
             );
             
-            // Guardar la imagen como string base64 en lugar de URL
-            packToSave.imageUrl = base64Image;
+            // Verificar el tamaño del base64 resultante
+            const base64Size = base64Image.length;
+            console.log('Tamaño de la imagen base64 (update):', base64Size, 'caracteres');
+            
+            // Firestore tiene un límite de ~1MB por campo, verificar que no lo excedamos
+            const maxSize = 1048487; // Límite de Firestore en bytes
+            if (base64Size > maxSize) {
+              // Si aún es muy grande, intentar con compresión aún más agresiva
+              console.warn('Imagen aún muy grande (update), aplicando compresión adicional...');
+              const base64ImageCompressed = await compressAndConvertToBase64(
+                packToSave.imageFile, 
+                400,  // Ancho máximo aún más reducido
+                0.3   // Calidad muy baja
+              );
+              
+              const compressedSize = base64ImageCompressed.length;
+              console.log('Tamaño de la imagen con compresión adicional (update):', compressedSize, 'caracteres');
+              
+              if (compressedSize > maxSize) {
+                throw new Error('La imagen es demasiado grande incluso después de la compresión. Por favor, usa una imagen más pequeña.');
+              }
+              
+              packToSave.imageUrl = base64ImageCompressed;
+            } else {
+              packToSave.imageUrl = base64Image;
+            }
             
             // Eliminar el archivo de la data que se enviará a Firestore
             delete packToSave.imageFile;
             
-            console.log('✅ Imagen convertida a base64 correctamente');
+            console.log('✅ Imagen convertida a base64 correctamente (update)');
           } catch (error) {
-            console.error('❌ Error al procesar imagen:', error);
+            console.error('❌ Error al procesar imagen (update):', error);
             throw new Error(`Error al procesar la imagen: ${error.message || 'Error desconocido'}`);
           }
         }

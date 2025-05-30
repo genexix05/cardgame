@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/card.dart' as card_model;
-import '../models/deck.dart';
 import '../services/deck_service.dart';
 import '../services/firestore_service.dart';
 import 'dart:convert';

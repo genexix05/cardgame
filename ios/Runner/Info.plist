@@ -55,22 +55,7 @@
   <key>UIApplicationSupportsIndirectInputEvents</key>
   <true/>
 
-  <!-- 1) URL scheme para Google Sign-In -->
-  <key>CFBundleURLTypes</key>
-  <array>
-    <dict>
-      <key>CFBundleTypeRole</key>
-      <string>Editor</string>
-      <key>CFBundleURLSchemes</key>
-      <array>
-        <!-- Aquí va tu REVERSED_CLIENT_ID -->
-        <string>com.googleusercontent.apps.1074439862642-k35vl2np2jm79vdnntcf7rsbtoeq8uji</string>
-      </array>
-    </dict>
-  </array>
-
-  <key>GIDClientID</key>
-  <string>1074439862642-k35vl2np2jm79vdnntcf7rsbtoeq8uji.apps.googleusercontent.com</string>
+  <!-- URL scheme para Google Sign-In -->
   <key>CFBundleURLTypes</key>
   <array>
     <dict>
@@ -83,6 +68,10 @@
       </array>
     </dict>
   </array>
+
+  <!-- Google Client ID -->
+  <key>GIDClientID</key>
+  <string>1074439862642-k35vl2np2jm79vdnntcf7rsbtoeq8uji.apps.googleusercontent.com</string>
 
   <!-- 2) Schemes permitidos para lanzar la app de Google -->
   <key>LSApplicationQueriesSchemes</key>
@@ -101,6 +90,16 @@
     <string>_dartobservatory._tcp</string>
     <string>_flutterdebug._tcp</string>
   </array>
+
+  <!-- 5) Configuración de audio -->
+  <key>UIBackgroundModes</key>
+  <array>
+    <string>audio</string>
+  </array>
+
+  <!-- 6) Categoría de audio para permitir reproducción -->
+  <key>AVAudioSessionCategory</key>
+  <string>AVAudioSessionCategoryPlayback</string>
 
 
 

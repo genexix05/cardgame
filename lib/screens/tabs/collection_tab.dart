@@ -7,6 +7,7 @@ import '../../widgets/card_grid.dart';
 import '../../models/card.dart' as model;
 import '../../models/user_collection.dart';
 import '../../services/firestore_service.dart';
+import '../card_detail_screen.dart';
 import 'dart:convert';
 
 class CollectionTab extends StatefulWidget {
@@ -142,7 +143,14 @@ class _CollectionTabState extends State<CollectionTab>
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mi Colección'),
+        title: const Text(
+          'Mi Colección',
+          style: TextStyle(
+            fontFamily: 'CCSoothsayer',
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
@@ -156,125 +164,39 @@ class _CollectionTabState extends State<CollectionTab>
           ),
         ],
       ),
-      body: collectionProvider.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : collectionProvider.userCollection == null
-              ? const Center(child: Text('No se pudo cargar la colección'))
-              : Column(
-                  children: [
-                    // Información de la colección
-                    Card(
-                      margin: const EdgeInsets.all(16.0),
-                      elevation: 4,
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            Column(
-                              children: [
-                                const Text(
-                                  'Cartas',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+      body: Container(
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/home_background.png'),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: collectionProvider.isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : collectionProvider.userCollection == null
+                ? const Center(child: Text('No se pudo cargar la colección'))
+                : Column(
+                    children: [
+                      // Grid de cartas
+                      Expanded(
+                        child: collectionProvider.userCardsWithDetails.isEmpty
+                            ? const Center(
+                                child: Text(
+                                  'No tienes cartas en tu colección.\n¡Abre sobres para conseguir algunas!',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(fontSize: 16),
                                 ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  '${collectionProvider.userCardsWithDetails.length}',
-                                  style: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFFFF5722),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Column(
-                              children: [
-                                const Text(
-                                  'Monedas',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  '${collectionProvider.userCollection?.coins ?? 0}',
-                                  style: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFFFFD700),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Column(
-                              children: [
-                                const Text(
-                                  'Gemas',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  '${collectionProvider.userCollection?.gems ?? 0}',
-                                  style: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF1E88E5),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    // Filtros
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Row(
-                        children: [
-                          _buildFilterChip('Todas'),
-                          _buildFilterChip('Favoritas'),
-                          _buildFilterChip('Comunes'),
-                          _buildFilterChip('Poco comunes'),
-                          _buildFilterChip('Raras'),
-                          _buildFilterChip('Super raras'),
-                          _buildFilterChip('Ultra raras'),
-                          _buildFilterChip('Legendarias'),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Grid de cartas
-                    Expanded(
-                      child: collectionProvider.userCardsWithDetails.isEmpty
-                          ? const Center(
-                              child: Text(
-                                'No tienes cartas en tu colección.\n¡Abre sobres para conseguir algunas!',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(fontSize: 16),
+                              )
+                            : CardGrid(
+                                cards: _filterCards(collectionProvider),
+                                onCardTap: (cardDetails) {
+                                  _navigateToCardDetail(cardDetails);
+                                },
                               ),
-                            )
-                          : CardGrid(
-                              cards: _filterCards(collectionProvider),
-                              onCardTap: (cardDetails) {
-                                _showCardDetail(cardDetails);
-                              },
-                            ),
-                    ),
-                  ],
-                ),
+                      ),
+                    ],
+                  ),
+      ),
     );
   }
 
@@ -316,6 +238,34 @@ class _CollectionTabState extends State<CollectionTab>
     }
 
     return filteredCards;
+  }
+
+  // Navegar a la pantalla de detalles de carta
+  void _navigateToCardDetail(Map<String, dynamic> cardMap) {
+    final collectionProvider =
+        Provider.of<CollectionProvider>(context, listen: false);
+    final selectedCard = cardMap['cardDetail'] as model.Card;
+
+    // Obtener todas las cartas filtradas actualmente
+    final filteredCards = _filterCards(collectionProvider);
+
+    // Extraer solo las cartas (model.Card) de los mapas
+    final cards = filteredCards
+        .map((cardData) => cardData['cardDetail'] as model.Card)
+        .toList();
+
+    // Encontrar el índice de la carta seleccionada
+    final initialIndex = cards.indexWhere((card) => card.id == selectedCard.id);
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CardDetailScreen(
+          cards: cards,
+          initialIndex: initialIndex >= 0 ? initialIndex : 0,
+        ),
+      ),
+    );
   }
 
   // Mostrar detalles de una carta
@@ -941,109 +891,31 @@ class CardSearchDelegate extends SearchDelegate<model.Card?> {
     return CardGrid(
       cards: filteredCards,
       onCardTap: (cardDetails) {
-        // Cerrar el diálogo de búsqueda con el contexto proporcionado
-        close(context, cardDetails['cardDetail'] as model.Card?);
+        final selectedCard = cardDetails['cardDetail'] as model.Card;
 
-        // Usar el contexto proporcionado para abrir el modal de detalles
-        // después de un breve retardo para asegurar que la búsqueda se haya cerrado
+        // Extraer solo las cartas (model.Card) de los mapas filtrados
+        final cards = filteredCards
+            .map((cardData) => cardData['cardDetail'] as model.Card)
+            .toList();
+
+        // Encontrar el índice de la carta seleccionada
+        final initialIndex =
+            cards.indexWhere((card) => card.id == selectedCard.id);
+
+        // Cerrar el diálogo de búsqueda
+        close(context, selectedCard);
+
+        // Navegar a la pantalla de detalles después de un breve retardo
         Future.delayed(const Duration(milliseconds: 100), () {
           if (context.mounted) {
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => CardDetailScreen(
+                  cards: cards,
+                  initialIndex: initialIndex >= 0 ? initialIndex : 0,
+                ),
               ),
-              builder: (modalContext) {
-                // Extraer los datos de la carta
-                final card = cardDetails['cardDetail'] as model.Card;
-                final userCard = cardDetails['userCard'] as UserCard;
-
-                return DraggableScrollableSheet(
-                  initialChildSize: 0.7,
-                  maxChildSize: 0.9,
-                  minChildSize: 0.5,
-                  expand: false,
-                  builder: (context, scrollController) {
-                    return SingleChildScrollView(
-                      controller: scrollController,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Barra de control
-                          Center(
-                            child: Container(
-                              margin: const EdgeInsets.only(top: 8, bottom: 16),
-                              width: 40,
-                              height: 5,
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade300,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                          ),
-
-                          // Imagen de la carta
-                          SizedBox(
-                            height: 250,
-                            width: double.infinity,
-                            child: _buildCardImage(card.imageUrl),
-                          ),
-
-                          // Información básica de la carta
-                          Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  card.name,
-                                  style: const TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  card.description,
-                                  style: const TextStyle(fontSize: 16),
-                                ),
-                                const SizedBox(height: 16),
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.star,
-                                      color:
-                                          _getRarityColor(card.rarity, context),
-                                      size: 18,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      _getRarityText(card.rarity, context),
-                                      style: TextStyle(
-                                        color: _getRarityColor(
-                                            card.rarity, context),
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const Spacer(),
-                                    Text(
-                                      'Cantidad: ${userCard.quantity}',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                );
-              },
             );
           }
         });

@@ -174,29 +174,27 @@ class _BattleScreenState extends State<BattleScreen>
 
                 // Determinar rareza para aplicar estilo
                 String rarity = 'common'; // Por defecto
-                if (card.baseCard.rarity != null) {
-                  // Convertir enum a string
-                  switch (card.baseCard.rarity) {
-                    case models.CardRarity.common:
-                      rarity = 'common';
-                      break;
-                    case models.CardRarity.uncommon:
-                      rarity = 'uncommon';
-                      break;
-                    case models.CardRarity.rare:
-                      rarity = 'rare';
-                      break;
-                    case models.CardRarity.superRare:
-                      rarity = 'super_rare';
-                      break;
-                    case models.CardRarity.legendary:
-                      rarity = 'legendary';
-                      break;
-                    default:
-                      rarity = 'common';
-                  }
+                // Convertir enum a string
+                switch (card.baseCard.rarity) {
+                  case models.CardRarity.common:
+                    rarity = 'common';
+                    break;
+                  case models.CardRarity.uncommon:
+                    rarity = 'uncommon';
+                    break;
+                  case models.CardRarity.rare:
+                    rarity = 'rare';
+                    break;
+                  case models.CardRarity.superRare:
+                    rarity = 'super_rare';
+                    break;
+                  case models.CardRarity.legendary:
+                    rarity = 'legendary';
+                    break;
+                  default:
+                    rarity = 'common';
                 }
-
+              
                 Widget cardWidget = CardStyles.card3D(
                   rarity: rarity,
                   child: Container(

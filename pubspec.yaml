@@ -48,6 +48,7 @@ flutter:
     - assets/images/dragon_ball_logo.png
     - assets/animations/
     - assets/icons/
+    - assets/icons/navigation/
     - assets/sounds/
     - assets/audio/
     - assets/fonts/
@@ -56,6 +57,12 @@ flutter:
     - family: Saiyan
       fonts:
         - asset: assets/fonts/Saiyan-Sans.ttf
+    - family: CCSoothsayer
+      fonts:
+        - asset: assets/fonts/CCSoothsayer.ttf
+    - family: PrimalScream
+      fonts:
+        - asset: assets/fonts/PrimalScream.ttf
 
 flutter_launcher_icons:
   android: true

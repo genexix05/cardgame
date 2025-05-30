@@ -238,7 +238,14 @@ class _MarketTabState extends State<MarketTab>
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mercado de Cartas'),
+        title: const Text(
+          'Mercado de Cartas',
+          style: TextStyle(
+            fontFamily: 'CCSoothsayer',
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         actions: [
           // Botón para ver mis ventas
           IconButton(
@@ -258,11 +265,18 @@ class _MarketTabState extends State<MarketTab>
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage != null
-              ? Center(child: Text(_errorMessage!))
-              : Column(
+      body: Container(
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/home_background.png'),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _errorMessage != null
+                ? Center(child: Text(_errorMessage!))
+                : Column(
                   children: [
                     // Información del usuario
                     Card(
@@ -690,7 +704,7 @@ class _MarketTabState extends State<MarketTab>
                     ),
                   ],
                 ),
-
+        ),
       // FAB para vender una carta
       floatingActionButton: FloatingActionButton(
         onPressed: () =>

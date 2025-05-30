@@ -14,9 +14,23 @@ class ProfileTab extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mi Perfil'),
+        title: const Text(
+          'Mi Perfil',
+          style: TextStyle(
+            fontFamily: 'CCSoothsayer',
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
-      body: SingleChildScrollView(
+      body: Container(
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/home_background.png'),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(

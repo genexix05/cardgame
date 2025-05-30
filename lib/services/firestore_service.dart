@@ -255,6 +255,61 @@ class FirestoreService {
     }
   }
 
+  // Verificar si una carta específica está disponible en un sobre
+  Future<bool> isCardInPack(String cardId, String packId) async {
+    try {
+      if (cardId.isEmpty || packId.isEmpty) {
+        return false;
+      }
+
+      print('🔍 Verificando si la carta $cardId está en el sobre $packId');
+
+      final QuerySnapshot snapshot = await _packsCollection
+          .doc(packId)
+          .collection('packCards')
+          .where('cardId', isEqualTo: cardId)
+          .get();
+
+      final bool isInPack = snapshot.docs.isNotEmpty;
+      print('Resultado: La carta ${isInPack ? 'SÍ' : 'NO'} está en el sobre');
+
+      return isInPack;
+    } catch (e) {
+      print('Error al verificar si la carta está en el sobre: $e');
+      return false;
+    }
+  }
+
+  // Obtener sobres que contienen una carta específica
+  Future<List<CardPack>> getPacksContainingCard(String cardId) async {
+    try {
+      if (cardId.isEmpty) {
+        return [];
+      }
+
+      print('🔍 Buscando sobres que contengan la carta $cardId');
+
+      // Obtener todos los sobres disponibles
+      final availablePacks = await getAvailablePacks();
+      final List<CardPack> packsWithCard = [];
+
+      // Verificar cada sobre para ver si contiene la carta
+      for (final pack in availablePacks) {
+        final bool containsCard = await isCardInPack(cardId, pack.id);
+        if (containsCard) {
+          packsWithCard.add(pack);
+          print('✅ La carta está disponible en el sobre: ${pack.name}');
+        }
+      }
+
+      print('Total de sobres que contienen la carta: ${packsWithCard.length}');
+      return packsWithCard;
+    } catch (e) {
+      print('Error al obtener sobres que contienen la carta: $e');
+      return [];
+    }
+  }
+
   // Registrar la apertura de un sobre
   Future<void> recordPackOpening(String userId, String packId,
       List<String> cardIds, DateTime timestamp) async {

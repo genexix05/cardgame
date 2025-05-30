@@ -38,11 +38,21 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     // AudioService se inicializa a través de su patrón singleton y
     // sus métodos internos manejan la inicialización si es necesario.
     // Por ejemplo, playButtonClickSound verifica y llama a initialize().
+
+    // Inicializar y reproducir música del menú
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (mounted) {
+        await _audioService.initialize();
+        // Usar método de prueba temporalmente
+        await _audioService.testPlayMenuMusic();
+      }
+    });
   }
 
   void _onTabTapped(int index) async {
-    if (_currentIndex == index)
+    if (_currentIndex == index) {
       return; // No hacer nada si se pulsa la pestaña actual
+    }
     setState(() {
       _currentIndex = index;
     });
@@ -53,55 +63,83 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        // Usar IndexedStack para mantener el estado de las pestañas
-        index: _currentIndex,
-        children: _screens,
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: _onTabTapped,
-        type: BottomNavigationBarType
-            .fixed, // Para que todos los items sean visibles
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        selectedItemColor: Theme.of(context).colorScheme.primary,
-        unselectedItemColor: Colors.grey[600], // Un gris un poco más oscuro
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Inicio',
+      extendBody: true,
+      body: Stack(
+        children: [
+          IndexedStack(
+            index: _currentIndex,
+            children: _screens,
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people), // Icono para "Equipo"
-            label: 'Equipo',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.card_giftcard), // Mismo que en la imagen original
-            label: 'Sobres',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.storefront), // Mismo que en la imagen original
-            label: 'Mercado',
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              height: 100 + MediaQuery.of(context).padding.bottom,
+              decoration: const BoxDecoration(
+                color: Colors.transparent,
+              ),
+              child: Padding(
+                padding: EdgeInsets.only(
+                    bottom: MediaQuery.of(context).padding.bottom),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    GestureDetector(
+                      onTap: () => _onTabTapped(0),
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        child: Image.asset(
+                          'assets/icons/navigation/home.png',
+                          width: 100,
+                          height: 100,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => _onTabTapped(1),
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        child: Image.asset(
+                          'assets/icons/navigation/equipo.png',
+                          width: 100,
+                          height: 100,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => _onTabTapped(2),
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        child: Image.asset(
+                          'assets/icons/navigation/sobres.png',
+                          width: 100,
+                          height: 100,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => _onTabTapped(3),
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        child: Image.asset(
+                          'assets/icons/navigation/mercado.png',
+                          width: 100,
+                          height: 100,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 }
-
-// Provisional: Crear el archivo team_tabs_screen.dart si no existe
-// para evitar errores de importación hasta que lo implementemos.
-// Este archivo se implementará correctamente en el siguiente paso.
-// --- lib/screens/team_tabs_screen.dart ---
-// import 'package:flutter/material.dart';
-//
-// class TeamTabsScreen extends StatelessWidget {
-//   const TeamTabsScreen({super.key});
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return const Center(child: Text('Pantalla de Equipo (Pestañas)'));
-//   }
-// }
-// -----------------------------------------

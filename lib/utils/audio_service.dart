@@ -27,6 +27,34 @@ class AudioService {
 
   bool get isAudioEnabled => _isAudioEnabled;
 
+  // Método directo para iniciar música del menú
+  Future<void> startMenuMusic() async {
+    try {
+      if (!_isInitialized) {
+        await initialize();
+      }
+      debugPrint('Iniciando música del menú directamente');
+      await playMenuMusic();
+    } catch (e) {
+      debugPrint('Error al iniciar música del menú: $e');
+    }
+  }
+
+  // Método de prueba simple para reproducir música sin fade
+  Future<void> testPlayMenuMusic() async {
+    try {
+      if (!_isInitialized) {
+        await initialize();
+      }
+      debugPrint('PRUEBA: Reproduciendo música del menú sin fade');
+      await _musicPlayer.play(AssetSource(_menuMusic), volume: 0.3);
+      debugPrint('PRUEBA: Música del menú iniciada con volumen 0.3');
+    } catch (e) {
+      debugPrint('PRUEBA: Error al reproducir música del menú: $e');
+      debugPrint('PRUEBA: Tipo de error: ${e.runtimeType}');
+    }
+  }
+
   Future<void> toggleAudio() async {
     try {
       _isAudioEnabled = !_isAudioEnabled;
@@ -173,11 +201,18 @@ class AudioService {
         await initialize();
       }
       debugPrint('Cambiando a música de menú');
-      await _fadeOutMusic();
-      await Future.delayed(const Duration(milliseconds: 100));
-      if (_isAudioEnabled) {
-        await playMenuMusic();
+
+      // Detener música actual si está reproduciéndose
+      try {
+        await _musicPlayer.stop();
+        debugPrint('Música anterior detenida');
+      } catch (e) {
+        debugPrint('No había música reproduciéndose: $e');
       }
+
+      await Future.delayed(const Duration(milliseconds: 100));
+      // Siempre reproducir música del menú ya que se fuerza audio habilitado en initialize
+      await playMenuMusic();
     } catch (e) {
       debugPrint('Error al cambiar a música de menú: $e');
       await initialize();
@@ -187,10 +222,16 @@ class AudioService {
   Future<void> playMenuMusic() async {
     try {
       if (!_isInitialized) {
+        debugPrint('AudioService no inicializado, inicializando...');
         await initialize();
       }
-      debugPrint('Intentando reproducir música de menú');
+      debugPrint(
+          'Intentando reproducir música de menú - Audio habilitado: $_isAudioEnabled');
+      debugPrint('Ruta del archivo: $_menuMusic');
+
       await _musicPlayer.play(AssetSource(_menuMusic), volume: 0.0);
+      debugPrint('Archivo de música cargado, iniciando fade in...');
+
       // Fade in gradual
       const int steps = 10;
       const Duration duration = Duration(milliseconds: 500);
@@ -202,9 +243,11 @@ class AudioService {
         await _musicPlayer.setVolume(newVolume);
         await Future.delayed(stepDuration);
       }
-      debugPrint('Música de menú reproducida');
+      debugPrint(
+          'Música de menú reproducida exitosamente con volumen final: 0.5');
     } catch (e) {
       debugPrint('Error al reproducir música de menú: $e');
+      debugPrint('Tipo de error: ${e.runtimeType}');
       await initialize();
     }
   }

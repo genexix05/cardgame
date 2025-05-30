@@ -419,6 +419,118 @@
               </div>
             </div>
             
+            <!-- Asistente de Auto-Rellenado de Sobre -->
+            <div class="space-y-6 border-t pt-6 mt-6">
+              <div class="text-center mb-4">
+                <h3 class="text-xl font-semibold text-gray-800">🚀 Asistente de Auto-Rellenado</h3>
+                <p class="text-sm text-gray-600">
+                  Define criterios para generar automáticamente el contenido del sobre.
+                </p>
+              </div>
+
+              <!-- Sección Sobres Base -->
+              <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                <h4 class="text-lg font-medium text-gray-800 mb-3 border-b pb-2">1. Sobres Base (Opcional)</h4>
+                <p class="text-xs text-gray-500 mb-2">
+                  Usa cartas de sobres existentes como referencia (ej. para evitar duplicados exactos en este sobre).
+                </p>
+                <select 
+                  multiple 
+                  class="form-select" 
+                  id="basePacks" 
+                  v-model="autoFillConfig.basePackIds"
+                  :disabled="loadingPacks"
+                  size="5"
+                >
+                  <option v-if="loadingPacks" value="" disabled>Cargando sobres...</option>
+                  <option v-else-if="allPacks.length === 0" value="" disabled>No hay sobres para usar como base</option>
+                  <option v-for="pack in allPacks.filter(p => !packId || p.id !== packId.value)" :key="pack.id" :value="pack.id">
+                    {{ pack.name }}
+                  </option>
+                </select>
+                <p class="text-xs text-gray-500 mt-1">Mantén Ctrl/Cmd y haz clic para seleccionar múltiples sobres.</p>
+                <div class="mt-3">
+                  <label class="flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      class="form-checkbox h-5 w-5 text-primary focus:ring-primary border-gray-300 rounded"
+                      v-model="autoFillConfig.excludeCardsFromBasePacks"
+                      :disabled="autoFillConfig.basePackIds.length === 0"
+                    >
+                    <span class="ml-2 text-sm text-gray-700">
+                      Excluir cartas fijas ya presentes en los sobres base seleccionados
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Sección Cantidades por Rareza -->
+              <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                <h4 class="text-lg font-medium text-gray-800 mb-3 border-b pb-2">2. Cartas por Rareza</h4>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-3">
+                  <div v-for="rarity in rarityList" :key="rarity.value">
+                    <label :for="'autofill-rarity-' + rarity.value" class="block text-sm font-medium text-gray-700 mb-1">
+                      {{ rarity.label }}
+                    </label>
+                    <input 
+                      type="number" 
+                      class="form-control text-sm" 
+                      :id="'autofill-rarity-' + rarity.value" 
+                      v-model.number="autoFillConfig.cardsPerRarity[rarity.value]" 
+                      min="0"
+                      :max="slotsParaAutoRellenar"
+                      :placeholder="slotsParaAutoRellenar > 0 ? Math.floor(slotsParaAutoRellenar / rarityList.length) : 0"
+                      :disabled="slotsParaAutoRellenar === 0"
+                    >
+                  </div>
+                </div>
+                <div :class="['text-xs mt-3 p-2 rounded-md', totalAutoFillRarityCards === slotsParaAutoRellenar ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700']">
+                  Cartas por rareza a añadir: {{ totalAutoFillRarityCards }} / {{ slotsParaAutoRellenar }}.
+                  <span v-if="autoFillRarityError" class="block font-medium">{{ autoFillRarityError }}</span>
+                </div>
+              </div>
+
+              <!-- Sección Cantidades por Tipo -->
+              <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                <h4 class="text-lg font-medium text-gray-800 mb-3 border-b pb-2">3. Cartas por Tipo</h4>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-3">
+                  <div v-for="type in cardTypeList" :key="type.value">
+                    <label :for="'autofill-type-' + type.value" class="block text-sm font-medium text-gray-700 mb-1">
+                      {{ type.label }}
+                    </label>
+                    <input 
+                      type="number" 
+                      class="form-control text-sm" 
+                      :id="'autofill-type-' + type.value" 
+                      v-model.number="autoFillConfig.cardsPerType[type.value]" 
+                      min="0"
+                      :max="slotsParaAutoRellenar"
+                      :placeholder="slotsParaAutoRellenar > 0 ? Math.floor(slotsParaAutoRellenar / cardTypeList.length) : 0"
+                      :disabled="slotsParaAutoRellenar === 0"
+                    >
+                  </div>
+                </div>
+                 <div :class="['text-xs mt-3 p-2 rounded-md', totalAutoFillTypeCards === slotsParaAutoRellenar ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700']">
+                  Cartas por tipo a añadir: {{ totalAutoFillTypeCards }} / {{ slotsParaAutoRellenar }}.
+                  <span v-if="autoFillTypeError" class="block font-medium">{{ autoFillTypeError }}</span>
+                </div>
+              </div>
+              
+              <!-- Botón para ejecutar -->
+              <div class="flex justify-center mt-6">
+                <button 
+                  type="button" 
+                  class="btn-primary bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-3 px-6 rounded-lg shadow-lg transform hover:scale-105 transition-transform duration-150 ease-in-out flex items-center text-base"
+                  @click="executeAutoFill"
+                  :disabled="isAutoFilling || !!autoFillRarityError || !!autoFillTypeError || slotsParaAutoRellenar === 0"
+                >
+                  <i class="fas fa-magic mr-2"></i>
+                  <span v-if="isAutoFilling" class="animate-spin mr-2">⌛</span>
+                  Rellenar Sobre Automáticamente
+                </button>
+              </div>
+            </div>
+            
             <!-- Error al enviar -->
             <div v-if="submitError" class="bg-red-50 border-l-4 border-red-400 p-4">
               <div class="flex">
@@ -538,6 +650,57 @@ export default {
     // Cartas disponibles para seleccionar
     const availableCards = computed(() => {
       return cards.value.filter(card => !fixedCards.value.includes(card.id));
+    });
+    
+    // Para el asistente de auto-rellenado
+    const allPacks = computed(() => store.state.packs || []);
+    const loadingPacks = ref(false);
+    const isAutoFilling = ref(false);
+
+    const autoFillConfig = reactive({
+      basePackIds: [],
+      excludeCardsFromBasePacks: true,
+      cardsPerRarity: {},
+      cardsPerType: {}
+    });
+
+    // Lista de tipos de carta (deberías tener esto globalmente o definirlo aquí)
+    const cardTypeList = [
+      { value: 'character', label: 'Personaje' },
+      { value: 'support', label: 'Soporte' },
+      { value: 'equipment', label: 'Equipamiento' },
+      { value: 'event', label: 'Evento' },
+      // Añade otros tipos si los tienes
+    ];
+
+    // Inicializar contadores para autoFillConfig
+    rarityList.forEach(r => autoFillConfig.cardsPerRarity[r.value] = 0);
+    cardTypeList.forEach(t => autoFillConfig.cardsPerType[t.value] = 0);
+
+    const slotsParaAutoRellenar = computed(() => {
+      const remaining = packData.cardCount - (fixedCards.value?.length || 0);
+      return Math.max(0, remaining);
+    });
+
+    const totalAutoFillRarityCards = computed(() => {
+      return Object.values(autoFillConfig.cardsPerRarity).reduce((sum, val) => sum + (Number(val) || 0), 0);
+    });
+    const totalAutoFillTypeCards = computed(() => {
+      return Object.values(autoFillConfig.cardsPerType).reduce((sum, val) => sum + (Number(val) || 0), 0);
+    });
+
+    const autoFillRarityError = computed(() => {
+      if (slotsParaAutoRellenar.value > 0 && totalAutoFillRarityCards.value !== 0 && totalAutoFillRarityCards.value !== slotsParaAutoRellenar.value) {
+        return `La suma (${totalAutoFillRarityCards.value}) debe ser 0 o ${slotsParaAutoRellenar.value} (cartas restantes).`;
+      }
+      return '';
+    });
+
+    const autoFillTypeError = computed(() => {
+      if (slotsParaAutoRellenar.value > 0 && totalAutoFillTypeCards.value !== 0 && totalAutoFillTypeCards.value !== slotsParaAutoRellenar.value) {
+        return `La suma (${totalAutoFillTypeCards.value}) debe ser 0 o ${slotsParaAutoRellenar.value} (cartas restantes).`;
+      }
+      return '';
     });
     
     // Formatear una fecha para el input date (YYYY-MM-DD)
@@ -819,61 +982,39 @@ export default {
       isSubmitting.value = true;
       
       try {
-        // Preparar los datos para guardar (sin clonar con JSON.stringify ya que pierde propiedades del objeto File)
-        const packToSave = {};
-        
-        // Copiar propiedades básicas del packData
-        Object.keys(packData).forEach(key => {
-          if (key !== 'imageFile') {
-            packToSave[key] = packData[key];
-          }
-        });
+        // Preparar los datos para guardar
+        const packToSave = {
+          name: packData.name,
+          description: packData.description,
+          price: packData.price,
+          cardCount: packData.cardCount,
+          available: packData.available,
+          // imageUrl se toma inicialmente de packData
+          imageUrl: packData.imageUrl, 
+          probabilities: {}, // Se poblará a continuación
+          fixedCards: Array.isArray(fixedCards.value) ? [...fixedCards.value] : [],
+          releaseDate: releaseDateStr.value ? new Date(releaseDateStr.value) : new Date(),
+        };
         
         // Convertir probabilidades de porcentaje a decimal (0-1)
-        packToSave.probabilities = {};
         rarityList.forEach(rarity => {
-          packToSave.probabilities[rarity.value] = probabilities[rarity.value] / 100;
+          packToSave.probabilities[rarity.value] = (probabilities[rarity.value] || 0) / 100;
         });
         
-        // Manejar cartas fijas - Ahora se guardarán en una subcolección 'packCards'
-        // Preparar el array de IDs de cartas para enviar al store
-        const fixedCardsArray = Array.isArray(fixedCards.value) ? [...fixedCards.value] : [];
-        console.log('Array de cartas fijas para guardar:', fixedCardsArray);
-        
-        // Agregar información de cuántas cartas se están enviando
-        if (fixedCardsArray.length > 0) {
-          console.log(`Se enviarán ${fixedCardsArray.length} cartas fijas al store`);
-          // Mostrar los nombres de las cartas que se enviarán
-          fixedCardsArray.forEach((cardId, index) => {
-            const cardName = getCardName(cardId);
-            console.log(`- Carta ${index + 1}: ${cardName} (ID: ${cardId})`);
-          });
-        } else {
-          console.log('No hay cartas fijas para enviar al store');
-        }
-        
-        // Asignar el array de cartas fijas
-        packToSave.fixedCards = fixedCardsArray;
-        
-        // Fecha de lanzamiento
-        if (releaseDateStr.value) {
-          packToSave.releaseDate = new Date(releaseDateStr.value);
-        }
-        
-        // Añadir la imagen si hay una nueva - NO usar JSON.stringify con el objeto File
+        // Si hay una nueva imagen seleccionada, añadirla al payload 
+        // y establecer imageUrl a null. La acción del store es responsable 
+        // de subir imageFile y establecer la nueva imageUrl.
         if (imageFile.value) {
           packToSave.imageFile = imageFile.value;
-          console.log('Asignando imagen:', imageFile.value);
-          console.log('Es blob:', imageFile.value instanceof Blob);
-          console.log('Es file:', imageFile.value instanceof File);
-          console.log('Tipo de archivo:', imageFile.value.type);
+          packToSave.imageUrl = null; 
         }
         
-        console.log('Guardando sobre con datos completos:', {
-          ...packToSave,
-          imageUrl: packToSave.imageUrl ? '[base64 image]' : null,
-          fixedCards: packToSave.fixedCards
-        });
+        // Preparamos un objeto para el log, evitando mostrar el objeto File completo
+        const loggablePackData = { ...packToSave };
+        if (loggablePackData.imageFile) {
+          loggablePackData.imageFile = '[File Object]';
+        }
+        console.log('Guardando sobre con datos para el store:', loggablePackData);
         
         let savedPack;
         
@@ -889,7 +1030,7 @@ export default {
         }
         
         console.log('Sobre guardado con éxito:', savedPack);
-        console.log('fixedCards en el sobre guardado:', savedPack?.fixedCards);
+        // console.log('fixedCards en el sobre guardado:', savedPack?.fixedCards); // Descomentar si es necesario para depuración
         
         if (savedPack) {
           // Redireccionar a la lista de sobres con mensaje de éxito
@@ -1018,19 +1159,11 @@ export default {
         return;
       }
       
-      // Guardar la carta que vamos a eliminar para el log
-      const removedCard = fixedCards.value[index];
-      
-      // Crear un nuevo array sin la carta eliminada
-      const newFixedCards = [
-        ...fixedCards.value.slice(0, index),
-        ...fixedCards.value.slice(index + 1)
-      ];
-      
-      // Asignar el nuevo array al ref de fixedCards
+      const removedCardId = fixedCards.value[index];
+      const newFixedCards = fixedCards.value.filter((_, i) => i !== index);
       fixedCards.value = newFixedCards;
       
-      console.log('Carta eliminada de fixedCards:', removedCard);
+      console.log('Carta eliminada de fixedCards:', removedCardId);
       console.log('fixedCards actual:', fixedCards.value);
     };
     
@@ -1094,6 +1227,201 @@ export default {
       cardSearchQuery.value = '';
     };
     
+    const loadAllPacks = async () => {
+      loadingPacks.value = true;
+      try {
+        // Asume que tienes una acción 'fetchPacks' que obtiene todos los sobres
+        if (!store.state.packs || store.state.packs.length === 0) {
+           await store.dispatch('fetchPacks');
+        }
+      } catch (error) {
+        console.error('Error al cargar todos los sobres:', error);
+        // Aquí podrías mostrar un error al usuario si es necesario
+      } finally {
+        loadingPacks.value = false;
+      }
+    };
+    
+    const executeAutoFill = async () => {
+      isAutoFilling.value = true;
+      submitError.value = '';
+      const logMessages = []; // Para logs detallados en consola
+      console.log("Iniciando auto-rellenado v3 con config:", JSON.parse(JSON.stringify(autoFillConfig)), `Slots: ${slotsParaAutoRellenar.value}`);
+
+      if (slotsParaAutoRellenar.value === 0) {
+        submitError.value = "No hay slots que rellenar.";
+        isAutoFilling.value = false;
+        return;
+      }
+
+      let availableCards = cards.value.filter(card => !fixedCards.value.includes(card.id));
+      if (autoFillConfig.excludeCardsFromBasePacks && autoFillConfig.basePackIds.length > 0) {
+        const cardsToExclude = new Set();
+        // ... (lógica de exclusión de sobres base) ...
+        availableCards = availableCards.filter(card => !cardsToExclude.has(card.id));
+      }
+      console.log(`Cartas candidatas iniciales: ${availableCards.length}`);
+
+      const addedCardIds = new Set(); // Para evitar duplicados en el mismo proceso de rellenado
+      const filledCardsOutput = [];
+      
+      let currentRarityGoals = { ...autoFillConfig.cardsPerRarity };
+      let currentTypeGoals = { ...autoFillConfig.cardsPerType };
+      const initialRarityGoals = { ...autoFillConfig.cardsPerRarity }; // Para el informe
+      const initialTypeGoals = { ...autoFillConfig.cardsPerType };   // Para el informe
+
+      let slotsFilled = 0;
+
+      // Bucle principal: llenar slots uno por uno
+      while (slotsFilled < slotsParaAutoRellenar.value && availableCards.length > 0) {
+        let bestCardToPick = null;
+        let bestCardScore = -1;
+        let bestCardIndex = -1;
+
+        // Evaluar todas las cartas disponibles en cada iteración de slot
+        for (let i = 0; i < availableCards.length; i++) {
+          const card = availableCards[i];
+          if (addedCardIds.has(card.id)) continue; // Ya seleccionada en este rellenado
+
+          let score = 0;
+          let typeContributes = false;
+          let rarityContributes = false;
+
+          // Obtener de forma segura los valores de los objetivos actuales e iniciales
+          const cardType = card.type;
+          const cardRarity = card.rarity;
+
+          const currentCardTypeGoal = currentTypeGoals[cardType] || 0;
+          const initialCardTypeUserGoal = initialTypeGoals[cardType] || 0;
+
+          const currentCardRarityGoal = currentRarityGoals[cardRarity] || 0;
+          const initialCardRarityUserGoal = initialRarityGoals[cardRarity] || 0;
+
+          // Prioridad 1: Contribución al Tipo
+          if (totalAutoFillTypeCards.value > 0 && currentCardTypeGoal > 0) {
+            score += 100; // Alto peso base por cumplir un tipo necesitado
+            // Ponderación por la cantidad absoluta que falta de este tipo
+            score += currentCardTypeGoal * 25; // Factor de ponderación para tipo
+            typeContributes = true;
+          } else if (totalAutoFillTypeCards.value === 0) {
+            // No se especificaron tipos, pequeño bonus por llenar el slot
+            score += 5;
+          }
+
+          // Prioridad 2: Contribución a la Rareza (considerada si ayuda al tipo, o como secundario)
+          if (totalAutoFillRarityCards.value > 0) { // El usuario especificó objetivos de rareza
+            if (currentCardRarityGoal > 0 && initialCardRarityUserGoal > 0) { // Pidió esta rareza (y no era cero inicialmente) y aún faltan
+              score += 20; // Peso base por cumplir una rareza necesitada
+              // Ponderación por la cantidad absoluta que falta de esta rareza
+              score += currentCardRarityGoal * 15; // Factor de ponderación para rareza (aumentado de 10 a 15)
+              rarityContributes = true;
+            }
+            // Si initialCardRarityUserGoal === 0, no entra aquí, no suma puntos por rareza.
+            // Si initialCardRarityUserGoal > 0 pero currentCardRarityGoal === 0 (ya se cumplió), tampoco suma ni resta por rareza aquí.
+          } else if (totalAutoFillRarityCards.value === 0) {
+            // No se especificaron rarezas, pequeño bonus
+            score += 1;
+            // En este caso, podríamos considerar que rarityContributes es true para el bonus de doble contribución si también cumple tipo? No, mejor mantenerlo simple.
+          }
+          
+          // Penalización si la rareza fue explícitamente puesta a 0 por el usuario
+          if (totalAutoFillRarityCards.value > 0 && initialCardRarityUserGoal === 0 && cardRarity !== '') {
+            if (Object.prototype.hasOwnProperty.call(initialRarityGoals, cardRarity)) {
+                 score -= 1000; // Penalización muy grande
+                 // Asegurarse de que rarityContributes sea false para que no obtenga el bonus de doble contribución
+                 rarityContributes = false; 
+            }
+          }
+
+          // Bonus si la carta contribuye tanto al tipo como a la rareza necesitados
+          if (typeContributes && rarityContributes) { // rarityContributes será false si fue penalizada
+            score += 30; // Bonus por doble contribución
+          }
+
+          // Si no contribuye a NADA necesitado (y se especificaron objetivos para AMBAS categorías), score muy bajo
+          if (totalAutoFillTypeCards.value > 0 && !typeContributes && 
+              totalAutoFillRarityCards.value > 0 && !rarityContributes) {
+             score = 0.1; 
+          }
+
+          if (score > bestCardScore) {
+            bestCardScore = score;
+            bestCardToPick = card;
+            bestCardIndex = i;
+          }
+        }
+
+        if (bestCardToPick) {
+          filledCardsOutput.push(bestCardToPick);
+          addedCardIds.add(bestCardToPick.id);
+          slotsFilled++;
+
+          // Decrementar goals si la carta seleccionada contribuyó
+          if (totalAutoFillTypeCards.value > 0 && currentTypeGoals[bestCardToPick.type] > 0) {
+            currentTypeGoals[bestCardToPick.type]--;
+          }
+          if (totalAutoFillRarityCards.value > 0 && currentRarityGoals[bestCardToPick.rarity] > 0) {
+            currentRarityGoals[bestCardToPick.rarity]--;
+          }
+          availableCards.splice(bestCardIndex, 1); // Quitarla de disponibles para la siguiente iteración de slot
+        } else {
+          break; // No más cartas elegibles o disponibles
+        }
+      }
+      
+      // Actualizar fixedCards y generar informe (usando currentRarityGoals y currentTypeGoals para el estado final)
+      if (filledCardsOutput.length > 0) {
+        const updatedFixedCards = [...fixedCards.value, ...filledCardsOutput.map(c => c.id)];
+        fixedCards.value = updatedFixedCards;
+      }
+
+      // Generación del informe final (similar a antes, pero usando los currentGoals para el estado final)
+      let finalUserMessage = [];
+      finalUserMessage.push(`${filledCardsOutput.length} carta(s) fueron seleccionadas por el asistente.`);
+      // ... (resto de la lógica del informe usando initialRarityGoals, initialTypeGoals, currentRarityGoals, currentTypeGoals) ...
+      // (Asegúrate que esta parte del informe se adapta para usar los nombres de variable correctos)
+      
+      // Informe de Rarezas
+      let rarityReport = [];
+      rarityList.forEach(r => {
+        const requested = initialRarityGoals[r.value] || 0;
+        const fulfilledByAlgo = requested - (currentRarityGoals[r.value] || 0);
+        if (requested > 0) {
+          if (currentRarityGoals[r.value] > 0 && fulfilledByAlgo < requested ) {
+            rarityReport.push(`Rareza ${r.label}: se pidieron ${requested}, se intentaron añadir ${fulfilledByAlgo} (faltaron ${currentRarityGoals[r.value]}).`);
+          } else {
+            rarityReport.push(`Rareza ${r.label}: se pidieron ${requested}, ¡objetivo de añadir ${fulfilledByAlgo} cumplido!`);
+          }
+        }
+      });
+      if(rarityReport.length > 0) finalUserMessage.push("\nDetalle de Cumplimiento (Rarezas):\n" + rarityReport.join("\n"));
+
+      // Informe de Tipos
+      let typeReport = [];
+      cardTypeList.forEach(t => {
+        const requested = initialTypeGoals[t.value] || 0;
+        const fulfilledByAlgo = requested - (currentTypeGoals[t.value] || 0);
+        if (requested > 0) {
+          if (currentTypeGoals[t.value] > 0 && fulfilledByAlgo < requested) {
+            typeReport.push(`Tipo ${t.label}: se pidieron ${requested}, se intentaron añadir ${fulfilledByAlgo} (faltaron ${currentTypeGoals[t.value]}).`);
+          } else {
+            typeReport.push(`Tipo ${t.label}: se pidieron ${requested}, ¡objetivo de añadir ${fulfilledByAlgo} cumplido!`);
+          }
+        }
+      });
+      if(typeReport.length > 0) finalUserMessage.push("\nDetalle de Cumplimiento (Tipos):\n" + typeReport.join("\n"));
+
+      if (slotsFilled < slotsParaAutoRellenar.value) {
+        finalUserMessage.push(`\n¡Atención! Solo se pudieron llenar ${slotsFilled} de ${slotsParaAutoRellenar.value} slots.`);
+      } else {
+        finalUserMessage.push("\n¡Éxito! Todos los slots solicitados al asistente se han llenado.");
+      }
+      
+      console.log(logMessages.join('\n')); // Si usas logMessages para debug interno
+      // submitError.value = finalUserMessage.join('\n'); // <-- Eliminado para no mostrar el mensaje detallado
+      isAutoFilling.value = false;
+    };
+    
     return {
       packData,
       loading,
@@ -1112,6 +1440,7 @@ export default {
       selectedCardId,
       loadingCards,
       availableCards,
+      packId,
       
       handleImageChange,
       savePack,
@@ -1119,6 +1448,8 @@ export default {
       loadPack,
       validateProbabilities,
       distributeProbabilities,
+      addFixedCard,
+      removeFixedCard,
       getCardName,
       getCardRarity,
       getCardType,
@@ -1131,9 +1462,20 @@ export default {
       filteredCards,
       filterCards,
       selectCard,
-      addFixedCard,
       getCardImage,
-      getCardRarityValue
+      getCardRarityValue,
+      allPacks,
+      loadingPacks,
+      autoFillConfig,
+      cardTypeList,
+      totalAutoFillRarityCards,
+      totalAutoFillTypeCards,
+      autoFillRarityError,
+      autoFillTypeError,
+      isAutoFilling,
+      executeAutoFill,
+      loadAllPacks,
+      slotsParaAutoRellenar
     };
   }
 };
@@ -1189,5 +1531,9 @@ export default {
 
 .form-checkbox {
   @apply h-5 w-5 text-primary focus:ring-primary border-gray-300 rounded;
+}
+
+.form-select[multiple] {
+  min-height: 100px; /* Para dar más espacio al selector múltiple */
 }
 </style>

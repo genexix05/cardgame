@@ -2,14 +2,25 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../utils/platform_utils.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  late final GoogleSignIn _googleSignIn;
 
   AuthService() {
-    // Ya no es necesario configurar la persistencia en plataformas móviles
-    // La persistencia se maneja automáticamente
+    // Configurar GoogleSignIn según la plataforma
+    _googleSignIn = GoogleSignIn(
+      scopes: ['email', 'profile'],
+      // En simulador iOS, forzar el uso del navegador web
+      forceCodeForRefreshToken: PlatformUtils.isIOSSimulator,
+    );
+
+    // Debug info para simulador
+    if (PlatformUtils.isSimulator) {
+      print('🔧 Ejecutándose en simulador/emulador');
+      print('📱 Info del dispositivo: ${PlatformUtils.deviceInfo}');
+    }
   }
 
   // Obtener el usuario actual
@@ -95,12 +106,30 @@ class AuthService {
   // Inicio de sesión con Google
   Future<User?> signInWithGoogle() async {
     try {
+      print('🚀 Iniciando Google Sign-In...');
+
+      // Mostrar información del simulador si aplica
+      if (PlatformUtils.isIOSSimulator) {
+        print('⚠️ Ejecutándose en simulador iOS - usando navegador web');
+      }
+
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
-      if (googleUser == null) return null;
+      if (googleUser == null) {
+        print('❌ Usuario canceló el inicio de sesión con Google');
+        return null;
+      }
+
+      print('✅ Usuario seleccionado: ${googleUser.email}');
 
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
+
+      if (googleAuth.accessToken == null || googleAuth.idToken == null) {
+        throw Exception('No se pudieron obtener los tokens de Google');
+      }
+
+      print('🔑 Tokens obtenidos correctamente');
 
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
@@ -153,10 +182,39 @@ class AuthService {
         }
       }
 
+      print('🎉 Autenticación exitosa: ${result.user?.email}');
       return result.user;
     } catch (e) {
-      print('Error en el inicio de sesión con Google: $e');
-      return null;
+      print('❌ Error en el inicio de sesión con Google: $e');
+
+      // Manejo específico de errores del simulador
+      if (PlatformUtils.isIOSSimulator) {
+        if (e.toString().contains('network_error') ||
+            e.toString().contains('connection') ||
+            e.toString().contains('interrupted') ||
+            e.toString().contains('NSURLErrorDomain') ||
+            e.toString().contains('The network connection was lost')) {
+          throw Exception('Error de conexión en el simulador iOS.\n\n'
+              'Soluciones recomendadas:\n'
+              '• Verifica que el WiFi esté funcionando correctamente\n'
+              '• Reinicia el simulador de iOS\n'
+              '• Prueba con Safari en el simulador para verificar conectividad\n'
+              '• Considera usar un dispositivo físico para mejores resultados\n\n'
+              'Este es un problema común en simuladores de iOS.');
+        }
+      }
+
+      // Otros errores comunes de Google Sign-In
+      if (e.toString().contains('sign_in_canceled')) {
+        return null; // Usuario canceló, no es un error
+      }
+
+      if (e.toString().contains('sign_in_failed')) {
+        throw Exception('Error en el proceso de autenticación con Google.\n'
+            'Intenta nuevamente o verifica tu conexión a internet.');
+      }
+
+      rethrow;
     }
   }
 

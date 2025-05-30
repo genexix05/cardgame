@@ -93,7 +93,27 @@ class AuthProvider with ChangeNotifier {
       _isLoading = false;
       _user = user;
       notifyListeners();
-      return true;
+      return user != null;
+    } catch (e) {
+      _isLoading = false;
+      _error = _handleAuthError(e);
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Inicio de sesión anónimo (para visitantes/simulador)
+  Future<bool> signInAnonymously() async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final user = await _authService.signInAnonymously();
+      _isLoading = false;
+      _user = user;
+      notifyListeners();
+      return user != null;
     } catch (e) {
       _isLoading = false;
       _error = _handleAuthError(e);
@@ -203,6 +223,12 @@ class AuthProvider with ChangeNotifier {
           return 'Error de autenticación: ${error.message}';
       }
     }
+
+    // Manejo específico para errores del simulador
+    if (error.toString().contains('Error de conexión en el simulador')) {
+      return error.toString().replaceAll('Exception: ', '');
+    }
+
     return 'Error de autenticación: $error';
   }
 }

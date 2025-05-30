@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 import '../models/card.dart' as model;
 import '../services/firestore_service.dart';
+import '../providers/collection_provider.dart';
+import '../providers/auth_provider.dart';
+import 'card_detail_screen.dart';
 // import '../widgets/card_widget.dart'; // Eliminado ya que no se usa por ahora
 
 class CardCatalogScreen extends StatefulWidget {
@@ -18,116 +23,225 @@ class _CardCatalogScreenState extends State<CardCatalogScreen> {
   void initState() {
     super.initState();
     // Obtener la instancia de FirestoreService vía Provider
-    // Asegúrate de que FirestoreService esté disponible en el árbol de widgets
-    // Esto usualmente se hace en main.dart o en un widget ancestro.
     final firestoreService =
         Provider.of<FirestoreService>(context, listen: false);
     _allCardsFuture = firestoreService.getAllCards();
+
+    // Cargar la colección del usuario si está autenticado
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadUserCollection();
+    });
+  }
+
+  void _loadUserCollection() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final collectionProvider =
+        Provider.of<CollectionProvider>(context, listen: false);
+
+    if (authProvider.user != null) {
+      collectionProvider.loadUserCollection(authProvider.user!.uid);
+    }
+  }
+
+  // Método para construir la imagen de la carta (maneja URL y base64)
+  Widget _buildCardImage(String imageUrl, bool userOwnsCard) {
+    // Verificar si la imagen está en formato base64
+    final imageBytes = _getImageBytes(imageUrl);
+
+    Widget imageWidget;
+
+    if (imageBytes != null) {
+      // Si es base64, mostrar usando Image.memory
+      imageWidget = Image.memory(
+        imageBytes,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            color: Colors.grey[300],
+            child: const Icon(
+              Icons.image_not_supported,
+              color: Colors.grey,
+              size: 50,
+            ),
+          );
+        },
+      );
+    } else {
+      // Si es URL, mostrar usando Image.network
+      imageWidget = Image.network(
+        imageUrl,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            color: Colors.grey[300],
+            child: const Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            color: Colors.grey[300],
+            child: const Icon(
+              Icons.image_not_supported,
+              color: Colors.grey,
+              size: 50,
+            ),
+          );
+        },
+      );
+    }
+
+    // Aplicar filtro en blanco y negro si el usuario no posee la carta
+    return ColorFiltered(
+      colorFilter: userOwnsCard
+          ? const ColorFilter.mode(
+              Colors.transparent,
+              BlendMode.multiply,
+            )
+          : const ColorFilter.matrix(<double>[
+              0.2126, 0.7152, 0.0722, 0, 0, // Red channel
+              0.2126, 0.7152, 0.0722, 0, 0, // Green channel
+              0.2126, 0.7152, 0.0722, 0, 0, // Blue channel
+              0, 0, 0, 1, 0, // Alpha channel
+            ]),
+      child: imageWidget,
+    );
+  }
+
+  // Método para extraer los bytes de la imagen de un string base64
+  Uint8List? _getImageBytes(String url) {
+    if (url.startsWith('data:')) {
+      final parts = url.split(',');
+      if (parts.length > 1) {
+        try {
+          return base64Decode(parts[1]);
+        } catch (e) {
+          return null;
+        }
+      }
+    }
+    return null;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // El AppBar ya está siendo manejado por TeamTabsScreen, así que no es necesario aquí
-      // si esta pantalla siempre se muestra dentro de TeamTabsScreen.
-      // Si se puede navegar a ella directamente, considera añadir un AppBar:
-      // appBar: AppBar(title: const Text('Catálogo de Cartas')),
-      body: FutureBuilder<List<model.Card>>(
-        future: _allCardsFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      appBar: AppBar(
+        title: const Text(
+          'Catálogo de Cartas',
+          style: TextStyle(
+            fontFamily: 'CCSoothsayer',
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: Theme.of(context).primaryColor,
+      ),
+      body: Container(
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/home_background.png'),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: Consumer<CollectionProvider>(
+          builder: (context, collectionProvider, child) {
+            return FutureBuilder<List<model.Card>>(
+              future: _allCardsFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-          if (snapshot.hasError) {
-            print(
-                'Error en FutureBuilder CardCatalogScreen: ${snapshot.error}');
-            return Center(
-              child: Text(
-                'Error al cargar el catálogo de cartas. Inténtalo de nuevo más tarde.\nDetalle: ${snapshot.error}',
-                textAlign: TextAlign.center,
-              ),
-            );
-          }
-
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(
-                child: Text('No hay cartas disponibles en el catálogo.'));
-          }
-
-          final cards = snapshot.data!;
-
-          // Opcional: Ordenar las cartas por algún criterio, ej. nombre, rareza, serie
-          // cards.sort((a, b) => a.name.compareTo(b.name));
-
-          return GridView.builder(
-            padding: const EdgeInsets.all(10.0),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3, // Número de columnas
-              childAspectRatio:
-                  0.7, // Relación de aspecto de cada celda (ancho / alto)
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-            ),
-            itemCount: cards.length,
-            itemBuilder: (context, index) {
-              final card = cards[index];
-              // Aquí usamos un CardWidget genérico. Necesitarás crear o adaptar uno.
-              // Si no tienes CardWidget, puedes reemplazarlo con un diseño simple:
-              return InkWell(
-                onTap: () {
-                  // Acción al pulsar una carta (ej. mostrar detalles)
-                  // Navigator.of(context).push(MaterialPageRoute(builder: (_) => CardDetailScreen(card: card)));
-                  print('Carta pulsada: ${card.name}');
-                },
-                child: GridTile(
-                  footer: Container(
-                    padding: const EdgeInsets.all(4.0),
-                    color: Colors.black54,
+                if (snapshot.hasError) {
+                  print(
+                      'Error en FutureBuilder CardCatalogScreen: ${snapshot.error}');
+                  return Center(
                     child: Text(
-                      card.name,
+                      'Error al cargar el catálogo de cartas. Inténtalo de nuevo más tarde.\nDetalle: ${snapshot.error}',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.white, fontSize: 12),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                     ),
+                  );
+                }
+
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const Center(
+                      child: Text('No hay cartas disponibles en el catálogo.'));
+                }
+
+                final cards = snapshot.data!;
+
+                // Opcional: Ordenar las cartas por algún criterio, ej. nombre, rareza, serie
+                // cards.sort((a, b) => a.name.compareTo(b.name));
+
+                return GridView.builder(
+                  padding: const EdgeInsets.all(10.0),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3, // Número de columnas
+                    childAspectRatio:
+                        0.7, // Relación de aspecto de cada celda (ancho / alto)
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
                   ),
-                  child: Hero(
-                    tag:
-                        'catalog_card_${card.id}', // Tag único para la animación Hero
-                    child: FadeInImage.assetNetwork(
-                      placeholder:
-                          'assets/images/card_placeholder.png', // Imagen placeholder local
-                      image: card.imageUrl,
-                      fit: BoxFit.cover,
-                      imageErrorBuilder: (context, error, stackTrace) {
-                        return Image.asset(
-                          'assets/images/card_placeholder_error.png', // Placeholder si la imagen de red falla
-                          fit: BoxFit.cover,
+                  itemCount: cards.length,
+                  itemBuilder: (context, index) {
+                    final card = cards[index];
+
+                    // Verificar si el usuario posee esta carta
+                    final userCollection = collectionProvider.userCollection;
+                    final bool userOwnsCard =
+                        userCollection?.cards.containsKey(card.id) ?? false;
+
+                    return InkWell(
+                      onTap: () {
+                        // Navegar a la pantalla de detalle de la carta
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => CardDetailScreen(
+                              cards: cards,
+                              initialIndex: index,
+                            ),
+                          ),
                         );
                       },
-                    ),
-                  ),
-                ),
-              );
-            },
-          );
-        },
+                      child: GridTile(
+                        footer: userOwnsCard
+                            ? Container(
+                                padding: const EdgeInsets.all(4.0),
+                                color: Colors.black54,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    'x${userCollection!.cards[card.id]!.quantity}',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : null,
+                        child: Hero(
+                          tag: 'catalog_card_${card.id}',
+                          child: _buildCardImage(card.imageUrl, userOwnsCard),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }
 }
-
-// NOTA: Para que este widget funcione correctamente:
-// 1. Asegúrate de que FirestoreService esté proveído en un ancestro.
-//    Ejemplo en main.dart:
-//    Provider<FirestoreService>(create: (_) => FirestoreService()),
-//
-// 2. Necesitarás imágenes placeholder en tu carpeta assets/images/:
-//    - card_placeholder.png
-//    - card_placeholder_error.png
-//    Si no las tienes, puedes usar Iconos o contenedores de color como placeholder.
-//
-// 3. El CardWidget es un widget que tendrías que haber creado o que necesitarás crear
-//    para mostrar una carta de forma más elaborada. El código actual usa un diseño simple
-//    con GridTile y FadeInImage.assetNetwork.

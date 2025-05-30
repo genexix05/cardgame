@@ -253,7 +253,14 @@ class _DecksScreenState extends State<DecksScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mis Mazos'),
+        title: const Text(
+          'Mis Mazos',
+          style: TextStyle(
+            fontFamily: 'CCSoothsayer',
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
@@ -261,47 +268,55 @@ class _DecksScreenState extends State<DecksScreen> {
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(_error!),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _loadDecks,
-                        child: const Text('Reintentar'),
-                      ),
-                    ],
-                  ),
-                )
-              : _decks.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text(
-                            'No tienes mazos creados',
-                            style: TextStyle(fontSize: 18),
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: _createNewDeck,
-                            child: const Text('Crear mi primer mazo'),
-                          ),
-                        ],
-                      ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(8.0),
-                      itemCount: _decks.length,
-                      itemBuilder: (context, index) {
-                        final deck = _decks[index];
-                        return _buildDeckCard(deck);
-                      },
+      body: Container(
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/home_background.png'),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(_error!),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: _loadDecks,
+                          child: const Text('Reintentar'),
+                        ),
+                      ],
                     ),
+                  )
+                : _decks.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text(
+                              'No tienes mazos creados',
+                              style: TextStyle(fontSize: 18),
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: _createNewDeck,
+                              child: const Text('Crear mi primer mazo'),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(8.0),
+                        itemCount: _decks.length,
+                        itemBuilder: (context, index) {
+                          final deck = _decks[index];
+                          return _buildDeckCard(deck);
+                        },
+                      ),
+      ),
     );
   }
 }

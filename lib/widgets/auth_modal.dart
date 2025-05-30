@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../utils/audio_service.dart';
+import '../utils/platform_utils.dart';
+import 'simulator_help_dialog.dart';
 
 class AuthModal extends StatelessWidget {
   const AuthModal({super.key});
@@ -39,6 +41,37 @@ class AuthModal extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 30),
+              // Mostrar advertencia si estamos en simulador
+              if (PlatformUtils.isIOSSimulator) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        color: Colors.orange.shade700,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Simulador detectado: Google Sign-In puede tener problemas de conectividad',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.orange.shade700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               // Botón de Google
               SizedBox(
                 width: double.infinity,
@@ -50,11 +83,38 @@ class AuthModal extends StatelessWidget {
                         final audioService = AudioService();
                         await audioService.stopMusic();
                         Navigator.of(context).pop(true);
+                      } else if (!success &&
+                          authProvider.error != null &&
+                          context.mounted) {
+                        // Verificar si es un error específico del simulador
+                        if (PlatformUtils.isIOSSimulator &&
+                            authProvider.error!.contains(
+                                'Error de conexión en el simulador')) {
+                          // Mostrar diálogo específico para simulador
+                          showDialog(
+                            context: context,
+                            builder: (context) => SimulatorHelpDialog(
+                              error: authProvider.error!,
+                            ),
+                          );
+                        } else {
+                          // Mostrar error genérico
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(authProvider.error!),
+                              backgroundColor: Colors.red,
+                              duration: const Duration(seconds: 5),
+                            ),
+                          );
+                        }
                       }
                     } catch (e) {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Error: $e')),
+                          SnackBar(
+                            content: Text('Error inesperado: $e'),
+                            backgroundColor: Colors.red,
+                          ),
                         );
                       }
                     }
@@ -98,6 +158,63 @@ class AuthModal extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
+              // Botón alternativo para simulador
+              if (PlatformUtils.isIOSSimulator) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      try {
+                        // Usar autenticación anónima como alternativa en simulador
+                        final success = await authProvider.signInAnonymously();
+                        if (success && context.mounted) {
+                          final audioService = AudioService();
+                          await audioService.stopMusic();
+                          Navigator.of(context).pop(true);
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Error en modo visitante: $e'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue.shade100,
+                      foregroundColor: Colors.blue.shade700,
+                      elevation: 2,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        side: BorderSide(color: Colors.blue.shade300),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.person_outline,
+                            size: 24, color: Colors.blue.shade700),
+                        const SizedBox(width: 12),
+                        const Flexible(
+                          child: Text(
+                            'Continuar como visitante (Simulador)',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
               // Botón de Transfer Code
               SizedBox(
                 width: double.infinity,
