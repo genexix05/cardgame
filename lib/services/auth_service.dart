@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../utils/platform_utils.dart';
 
 class AuthService {
@@ -10,8 +11,13 @@ class AuthService {
 
   AuthService() {
     // Configurar GoogleSignIn según la plataforma
+    // Detect web platform and set client ID accordingly
+    bool isRunningOnWeb = identical(0, 0.0);
     _googleSignIn = GoogleSignIn(
-      scopes: ['email', 'profile'],
+      clientId: isRunningOnWeb
+        ? '1074439862642-joo805hjq6e8rc8llbavh3bgmt2brv8r.apps.googleusercontent.com'
+        : null, // solo en web
+      scopes: ['openid','email', 'profile'],
       // En simulador iOS, forzar el uso del navegador web
       forceCodeForRefreshToken: PlatformUtils.isIOSSimulator,
     );
@@ -108,13 +114,33 @@ class AuthService {
     try {
       print('🚀 Iniciando Google Sign-In...');
 
+      // Determinar si estamos en web o en plataforma móvil
+      bool isWebPlatform = kIsWeb;
+
       // Mostrar información del simulador si aplica
       if (PlatformUtils.isIOSSimulator) {
         print('⚠️ Ejecutándose en simulador iOS - usando navegador web');
       }
 
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      GoogleSignInAccount? googleUser;
+      
+      // Usar enfoque diferente para web vs móvil
+      if (isWebPlatform) {
+        // Para web, intentar primero con signInSilently
+        googleUser = await _googleSignIn.signInSilently();
+        
+        // Si no hay sesión activa, usar signIn (aunque sea desconsejado)
+        if (googleUser == null) {
+          // Nota: Esto sigue utilizando signIn que será removido en Q2 2024
+          // TODO: Migrar a renderButton cuando sea posible
+          googleUser = await _googleSignIn.signIn();
+        }
+      } else {
+        // Para móvil, usar el flujo normal
+        googleUser = await _googleSignIn.signIn();
+      }
 
+      // Usuario canceló o no se pudo obtener
       if (googleUser == null) {
         print('❌ Usuario canceló el inicio de sesión con Google');
         return null;
@@ -122,66 +148,47 @@ class AuthService {
 
       print('✅ Usuario seleccionado: ${googleUser.email}');
 
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
+      // Intentar obtener los tokens de autenticación
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
-      if (googleAuth.accessToken == null || googleAuth.idToken == null) {
-        throw Exception('No se pudieron obtener los tokens de Google');
+      // En web, es posible que no tengamos idToken según la documentación
+      if (googleAuth.accessToken == null) {
+        throw Exception('No se pudo obtener el access token de Google');
+      }
+
+      // Para web, podemos no tener idToken, pero necesitamos al menos accessToken
+      AuthCredential credential;
+      if (googleAuth.idToken != null) {
+        // Método preferido: usar tanto accessToken como idToken
+        credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+      } else if (isWebPlatform) {
+        // Solo para web: si no hay idToken, usar el método alternativo con solo accessToken
+        // Crear un provider específico para Google y setear accessToken
+        final GoogleAuthProvider googleProvider = GoogleAuthProvider();
+        googleProvider.setCustomParameters({'access_type': 'offline'});
+        
+        // Firmar directamente con el provider en lugar de usar credential
+        final UserCredential result = await _auth.signInWithPopup(googleProvider);
+        
+        // Procesar el resultado igual que abajo
+        await _processGoogleSignInResult(result);
+        return result.user;
+      } else {
+        // En móvil siempre deberíamos tener idToken
+        throw Exception('No se pudo obtener el id token de Google');
       }
 
       print('🔑 Tokens obtenidos correctamente');
 
-      final AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      final UserCredential result =
-          await _auth.signInWithCredential(credential);
-
-      // Crear o actualizar documento de usuario en Firestore con rol predeterminado
-      if (result.user != null) {
-        final FirebaseFirestore firestore = FirebaseFirestore.instance;
-        // Verificar si el usuario ya existe
-        final userDoc =
-            await firestore.collection('users').doc(result.user!.uid).get();
-
-        // Si no existe, crear documento con rol predeterminado
-        if (!userDoc.exists) {
-          await firestore.collection('users').doc(result.user!.uid).set({
-            'email': result.user!.email ?? '',
-            'role': 'user', // Asignar rol de usuario por defecto
-            'createdAt': DateTime.now(),
-            'lastLogin': DateTime.now(),
-            'displayName': result.user!.displayName ?? '',
-            'photoURL': result.user!.photoURL ?? '',
-          }, SetOptions(merge: true));
-
-          // Inicializar la colección del usuario con valores predeterminados
-          await firestore.collection('users').doc(result.user!.uid).set({
-            'coins': 1000, // Monedas iniciales
-            'gems': 50, // Gemas iniciales
-            'cards': {}, // Inicializar mapa de cartas vacío
-            'resources': {'coins': 1000, 'gems': 50}, // Inicializar recursos
-            'totalCards': 0, // Inicializar contador de cartas
-            'rarityDistribution': {
-              'common': 0,
-              'uncommon': 0,
-              'rare': 0,
-              'superRare': 0,
-              'ultraRare': 0,
-              'legendary': 0,
-            }, // Inicializar distribución de rareza
-            'lastUpdated': FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true));
-        } else {
-          // Si ya existe, actualizar solo el último acceso
-          await firestore.collection('users').doc(result.user!.uid).update({
-            'lastLogin': DateTime.now(),
-          });
-        }
-      }
-
+      // Iniciar sesión con las credenciales
+      final UserCredential result = await _auth.signInWithCredential(credential);
+      
+      // Procesar el resultado
+      await _processGoogleSignInResult(result);
+      
       print('🎉 Autenticación exitosa: ${result.user?.email}');
       return result.user;
     } catch (e) {
@@ -214,7 +221,58 @@ class AuthService {
             'Intenta nuevamente o verifica tu conexión a internet.');
       }
 
+      // Manejo específico para errores web
+      if (kIsWeb && e.toString().contains('No se pudieron obtener los tokens')) {
+        throw Exception('Error en la autenticación web con Google.\n'
+            'Esto suele ocurrir debido a limitaciones del navegador o configuraciones de seguridad.\n'
+            'Intenta usar otro navegador o actualizar el existente.');
+      }
+
       rethrow;
+    }
+  }
+
+  // Método auxiliar para procesar el resultado de autenticación con Google
+  Future<void> _processGoogleSignInResult(UserCredential result) async {
+    if (result.user != null) {
+      final FirebaseFirestore firestore = FirebaseFirestore.instance;
+      // Verificar si el usuario ya existe
+      final userDoc = await firestore.collection('users').doc(result.user!.uid).get();
+
+      // Si no existe, crear documento con rol predeterminado
+      if (!userDoc.exists) {
+        await firestore.collection('users').doc(result.user!.uid).set({
+          'email': result.user!.email ?? '',
+          'role': 'user', // Asignar rol de usuario por defecto
+          'createdAt': DateTime.now(),
+          'lastLogin': DateTime.now(),
+          'displayName': result.user!.displayName ?? '',
+          'photoURL': result.user!.photoURL ?? '',
+        }, SetOptions(merge: true));
+
+        // Inicializar la colección del usuario con valores predeterminados
+        await firestore.collection('users').doc(result.user!.uid).set({
+          'coins': 1000, // Monedas iniciales
+          'gems': 50, // Gemas iniciales
+          'cards': {}, // Inicializar mapa de cartas vacío
+          'resources': {'coins': 1000, 'gems': 50}, // Inicializar recursos
+          'totalCards': 0, // Inicializar contador de cartas
+          'rarityDistribution': {
+            'common': 0,
+            'uncommon': 0,
+            'rare': 0,
+            'superRare': 0,
+            'ultraRare': 0,
+            'legendary': 0,
+          }, // Inicializar distribución de rareza
+          'lastUpdated': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      } else {
+        // Si ya existe, actualizar solo el último acceso
+        await firestore.collection('users').doc(result.user!.uid).update({
+          'lastLogin': DateTime.now(),
+        });
+      }
     }
   }
 

@@ -48,22 +48,83 @@ class _HomeScreenState extends State<HomeScreen> {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final deckProvider = Provider.of<DeckProvider>(context, listen: false);
 
-    // Asegurarse de que los datos necesarios para BattlesScreen estén cargados
-    // Esta lógica de carga podría moverse a un nivel superior si es accedida por múltiples pantallas
-    if (authProvider.isAuthenticated && authProvider.user != null) {
-      // Es posible que deckProvider.userDecks y deckProvider.deckCards ya estén cargados
-      // por MainNavigationScreen o SplashScreen si se centraliza la carga de datos.
-      // Si no, se deberían cargar aquí o asegurarse de que estén disponibles.
-    }
-
-    Navigator.of(context).push(CustomPageRoute(
-      child: BattlesScreen(
-        currentPlayerId: authProvider.user?.uid ?? '',
-        playerDecks: deckProvider.userDecks,
-        deckCards: deckProvider.deckCards,
+    // Mostrar indicador de carga mientras se preparan los datos
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        title: Text('Preparando batallas'),
+        content: SizedBox(
+          height: 100,
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Cargando tus mazos...'),
+              ],
+            ),
+          ),
+        ),
       ),
-      settings: const RouteSettings(name: '/battles'), // Añadir RouteSettings
-    ));
+    );
+
+    try {
+      // Asegurarse de que los datos necesarios para BattlesScreen estén cargados
+      if (authProvider.isAuthenticated && authProvider.user != null) {
+        // Cargar explícitamente los mazos del usuario si están vacíos
+        if (deckProvider.userDecks.isEmpty) {
+          print('Cargando mazos del usuario para batallas...');
+          await deckProvider.loadUserDecks(authProvider.user!.uid);
+        }
+      }
+
+      // Cerrar diálogo de carga
+      if (mounted) {
+        Navigator.pop(context);
+      }
+
+      // Verificar nuevamente si hay mazos disponibles
+      if (deckProvider.userDecks.isEmpty) {
+        // No hay mazos disponibles, mostrar mensaje y no navegar
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No tienes mazos para combatir. Por favor, crea un mazo primero.'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+        return;
+      }
+
+      // Navegar a la pantalla de batallas con los mazos cargados
+      if (mounted) {
+        Navigator.of(context).push(CustomPageRoute(
+          child: BattlesScreen(
+            currentPlayerId: authProvider.user?.uid ?? '',
+            playerDecks: deckProvider.userDecks,
+            deckCards: deckProvider.deckCards,
+          ),
+          settings: const RouteSettings(name: '/battles'),
+        ));
+      }
+    } catch (e) {
+      print('Error al preparar la pantalla de batallas: $e');
+      // Cerrar diálogo de carga en caso de error
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al cargar tus mazos: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 
   @override

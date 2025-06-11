@@ -66,6 +66,79 @@ class Card {
     // Procesar la imagen
     String imageUrl = map['imageUrl'] ?? '';
 
+    // Imprimir todo el mapa para depuración
+    print('📋 DATOS COMPLETOS DE LA CARTA: ${map['name']}');
+    map.forEach((key, value) {
+      print('   - $key: $value (${value.runtimeType})');
+    });
+
+    // Extraer valores según el tipo de dato en Firebase
+    // Primero intentamos obtener como int, luego como String convertible a int, después como valor por defecto
+    int extractInt(String key) {
+      var value = map[key];
+      if (value == null) {
+        print('   ⚠️ Campo $key no encontrado en Firebase');
+        return 0;
+      }
+      
+      if (value is int) {
+        print('   ✅ Campo $key encontrado como int: $value');
+        return value;
+      }
+      
+      if (value is String) {
+        try {
+          final parsedValue = int.parse(value);
+          print('   ✅ Campo $key encontrado como String y convertido a int: $parsedValue');
+          return parsedValue;
+        } catch (e) {
+          print('   ⚠️ Campo $key encontrado como String pero no se pudo convertir a int: $value');
+        }
+      }
+      
+      if (value is double) {
+        print('   ✅ Campo $key encontrado como double y convertido a int: ${value.toInt()}');
+        return value.toInt();
+      }
+      
+      print('   ⚠️ Campo $key tiene tipo no soportado: ${value.runtimeType}');
+      return 0;
+    }
+    
+    // IMPORTANTE: Acceso directo a los campos principales
+    // Basado en la estructura de Firebase vista en la captura
+    int health = 0;
+    int attack = 0;
+    int defense = 0;
+    
+    // Intentar obtener health/maxHealth directamente
+    if (map.containsKey('health')) {
+      health = extractInt('health');
+    } else if (map.containsKey('maxHealth')) {
+      health = extractInt('maxHealth');
+    } else if (map.containsKey('hp')) {
+      health = extractInt('hp');
+    }
+    
+    // Intentar obtener attack/atk directamente
+    if (map.containsKey('attack')) {
+      attack = extractInt('attack');
+    } else if (map.containsKey('atk')) {
+      attack = extractInt('atk');
+    }
+    
+    // Intentar obtener defense/def directamente
+    if (map.containsKey('defense')) {
+      defense = extractInt('defense');
+    } else if (map.containsKey('def')) {
+      defense = extractInt('def');
+    }
+    
+    print('🛡️ Atributos de combate finales para: ${map['name']}');
+    print('   - health: $health');
+    print('   - attack: $attack');
+    print('   - defense: $defense');
+
     return Card(
       id: id,
       name: map['name'] ?? '',
@@ -78,9 +151,9 @@ class Card {
       abilities: List<String>.from(map['abilities'] ?? []),
       tags: List<String>.from(map['tags'] ?? []),
       series: map['series'] ?? '',
-      maxHealth: map['maxHealth'] ?? 0,
-      attack: map['attack'] ?? 0,
-      defense: map['defense'] ?? 0,
+      maxHealth: health,
+      attack: attack,
+      defense: defense,
     );
   }
 

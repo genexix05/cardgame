@@ -1008,7 +1008,8 @@ class _PacksTabState extends State<PacksTab>
         Navigator.of(context).push(
           CustomPageRoute(
             child: PackOpeningScreen(
-              cards: packProvider.lastOpenedCards,
+              cards: packProvider.lastOpenedCards.take(5).toList(), // Limitado a 5 cartas
+              packImageUrl: pack.imageUrl, // Pasar la URL de la imagen del sobre
             ),
             settings: const RouteSettings(name: '/pack-opening'),
           ),

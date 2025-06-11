@@ -52,6 +52,7 @@ flutter:
     - assets/sounds/
     - assets/audio/
     - assets/fonts/
+    - assets/texture.png
     
   fonts:
     - family: Saiyan

@@ -52,6 +52,12 @@ class FirestoreService {
 
           print(
               '- ✅ Carta procesada: ${card.name} (${card.type}) - ID: ${card.id}');
+          
+          // Añadir log para verificar los valores de combate
+          print('- 🔢 Valores de combate: ATK=${card.attack}, DEF=${card.defense}, HP=${card.maxHealth}');
+          // Verificar datos originales
+          print('- 📊 Datos originales: health=${data['health']}, attack=${data['attack']}, defense=${data['defense']}');
+          
           cards.add(card);
         } catch (e) {
           print('❌ Error al procesar carta ${doc.id}: $e');

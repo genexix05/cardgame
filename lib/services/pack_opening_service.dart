@@ -50,7 +50,14 @@ class PackOpeningService {
                   abilities: card.abilities,
                   tags: card.tags,
                   series: card.series,
+                  // Copiar explícitamente los valores de combate
+                  attack: card.attack,
+                  defense: card.defense,
+                  maxHealth: card.maxHealth,
                 );
+                
+                // Añadir log para debug
+                print('🔢 Valores copiados - ATK: ${card.attack}, DEF: ${card.defense}, HP: ${card.maxHealth}');
 
                 fixedCards.add(cardWithCorrectId);
                 print(
